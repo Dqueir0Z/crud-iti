@@ -6,7 +6,7 @@
  */
 
 $this->headTitle($ar->getNome());
-$acN2s = $ar->getAcN2s();
+$vinculos = $ar->getVinculos();
 ?>
 <nav aria-label="breadcrumb">
     <ol class="breadcrumb">
@@ -34,27 +34,35 @@ $acN2s = $ar->getAcN2s();
 
 <dl class="ficha">
     <dt>Situação</dt>
-    <dd><?= $this->partial('icp/partial/situacao', ['situacao' => $ar->getSituacao()]) ?></dd>
+    <dd>
+        <?= $this->partial('icp/partial/situacao', ['situacao' => $ar->getSituacao()]) ?>
+        <?php if ($ar->temSituacoesDiferentes()) : ?>
+            <span class="small text-body-secondary d-block mt-1">Credenciada em ao menos uma AC N2; a situação de cada vínculo está abaixo.</span>
+        <?php endif; ?>
+    </dd>
     <dt>ID no ITI</dt>
     <dd><?= $ar->getItiId() ?? '<span class="text-body-secondary">cadastro manual</span>' ?></dd>
     <dt>Atualizado em</dt>
     <dd><?= $ar->getUpdatedAt()->format('d/m/Y H:i') ?></dd>
 </dl>
 
-<h2 class="h5">Vinculada a <?= $acN2s->count() ?> AC N2</h2>
+<h2 class="h5">Vinculada a <?= count($vinculos) ?> AC N2</h2>
 <div class="table-responsive">
     <table class="table align-middle tabela-dados">
         <thead>
             <tr>
                 <th scope="col">AC N2</th>
                 <th scope="col">AC principal</th>
+                <th scope="col">Situação no vínculo</th>
             </tr>
         </thead>
         <tbody>
-            <?php foreach ($acN2s as $acN2) : ?>
+            <?php foreach ($vinculos as $vinculo) : ?>
+                <?php $acN2 = $vinculo->getAcN2(); ?>
                 <tr>
                     <td><a href="<?= $this->url('ac-n2/view', ['id' => $acN2->getId()]) ?>"><?= $this->escapeHtml($acN2->getNome()) ?></a></td>
                     <td><a class="link-secondary" href="<?= $this->url('ac/view', ['id' => $acN2->getAc()->getId()]) ?>"><?= $this->escapeHtml($acN2->getAc()->getNome()) ?></a></td>
+                    <td><?= $this->partial('icp/partial/situacao', ['situacao' => $vinculo->getSituacao()]) ?></td>
                 </tr>
             <?php endforeach; ?>
         </tbody>

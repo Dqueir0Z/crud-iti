@@ -83,6 +83,7 @@ $form->prepare();
                     </table>
                     <p class="mb-3">
                         Vínculos AR ↔ AC N2 criados: <strong><?= number_format($resultado->vinculosCriados, 0, ',', '.') ?></strong>
+                        · com situação atualizada: <strong><?= number_format($resultado->vinculosAtualizados, 0, ',', '.') ?></strong>
                     </p>
 
                     <?php if ($resultado->avisos !== []) : ?>
@@ -105,7 +106,8 @@ $form->prepare();
                         <li><code>ac-root</code> (AC RAIZ) é o ponto de partida e não vira registro.</li>
                         <li><code>ac-1</code> → <strong>AC</strong>; <code>ac-2</code> → <strong>AC N2</strong> da AC acima; <code>ar</code> → <strong>AR</strong>.</li>
                         <li>A mesma AR aparece sob várias AC N2 no arquivo; ela é gravada uma vez, com todos os vínculos.</li>
-                        <li><code>situacao</code> 4002 = credenciado, 4001 = em credenciamento.</li>
+                        <li><code>situacao</code> 4002 = credenciado, 4001 = em credenciamento. A situação da AR é
+                            guardada em cada vínculo; a AR aparece como credenciada se for credenciada em ao menos uma AC N2.</li>
                         <li>Vínculos de AR direto com AC 1º nível são ignorados e informados nos avisos.</li>
                     </ul>
                 </div>

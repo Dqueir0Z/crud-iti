@@ -39,13 +39,14 @@ class AcN2
     private Ac $ac;
 
     /**
-     * Lado inverso do vínculo N:N com AR (o lado dono é Ar::$acN2s).
+     * Lado inverso dos vínculos com AR (o vínculo pertence à AR). Sem cascade de
+     * propósito: excluir a AC N2 com vínculos esbarra no ON DELETE RESTRICT.
+     * Para listar as AR em ordem, use ArRepository::findVinculosDaAcN2().
      *
-     * @var Collection<int, Ar>
+     * @var Collection<int, VinculoArAcN2>
      */
-    #[ORM\ManyToMany(targetEntity: Ar::class, mappedBy: 'acN2s', fetch: 'EXTRA_LAZY')]
-    #[ORM\OrderBy(['nome' => 'ASC'])]
-    private Collection $ars;
+    #[ORM\OneToMany(targetEntity: VinculoArAcN2::class, mappedBy: 'acN2', fetch: 'EXTRA_LAZY')]
+    private Collection $vinculos;
 
     #[ORM\Column(name: 'created_at', type: 'datetime_immutable')]
     private DateTimeImmutable $createdAt;
@@ -63,7 +64,7 @@ class AcN2
         $this->ac       = $ac;
         $this->situacao = $situacao;
         $this->itiId    = $itiId;
-        $this->ars      = new ArrayCollection();
+        $this->vinculos = new ArrayCollection();
 
         $agora = new DateTimeImmutable();
 
@@ -111,10 +112,22 @@ class AcN2
         $this->ac = $ac;
     }
 
-    /** @return Collection<int, Ar> */
-    public function getArs(): Collection
+    /** Quantidade de AR vinculadas (COUNT no banco, sem carregar a coleção). */
+    public function contarArs(): int
     {
-        return $this->ars;
+        return $this->vinculos->count();
+    }
+
+    /** @internal Mantém o lado inverso em memória; chamado por Ar. */
+    public function adicionarVinculo(VinculoArAcN2 $vinculo): void
+    {
+        $this->vinculos->add($vinculo);
+    }
+
+    /** @internal Mantém o lado inverso em memória; chamado por Ar. */
+    public function retirarVinculo(VinculoArAcN2 $vinculo): void
+    {
+        $this->vinculos->removeElement($vinculo);
     }
 
     public function getCreatedAt(): DateTimeImmutable

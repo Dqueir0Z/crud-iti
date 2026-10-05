@@ -45,12 +45,19 @@ não cobre. Ver também os avisos exibidos ao final de cada importação.
 - **Vínculos AR → AC 1º nível** (222 no arquivo) não existem no modelo exigido e são
   ignorados. As 3 ARs que só têm esse tipo de vínculo não são importadas.
 - **`situacao`:** 4002 = Credenciado, 4001 = Em credenciamento (códigos do próprio ITI).
+- **Situação por vínculo.** Em 21 ARs a situação muda conforme a AC N2 (ex.: AR CERTISIGN é
+  credenciada em 14 AC N2 e está em credenciamento na AC CERTISIGN_OM-BR). Por isso cada vínculo
+  guarda a sua situação (entidade `VinculoArAcN2`, coluna `ar_ac_n2.situacao`), exibida na árvore
+  e nas páginas de detalhe. A situação da própria AR, usada na listagem e no filtro, é
+  **Credenciado se ela for credenciada em ao menos uma AC N2**. Na edição manual, alterar o campo
+  situação aplica o novo valor a todos os vínculos; mantê-lo preserva a situação de cada um.
 - **`iti_id`:** guarda o `id` do ITI, com índice único. A importação casa os registros por ele,
   então reenviar o arquivo **atualiza sem duplicar**. Registros cadastrados à mão ficam com `iti_id` nulo.
   A reimportação cria e atualiza registros e vínculos, mas **não remove** o que deixou de constar
   no arquivo (nem vínculos feitos à mão); ela não é uma sincronização completa.
 - **Exclusão:** bloqueada com mensagem quando há dependentes (AC com AC N2, AC N2 com AR).
-  As FKs `ON DELETE RESTRICT` garantem a regra também no banco.
+  As FKs `ON DELETE RESTRICT` garantem a regra também no banco, inclusive se uma AR for
+  vinculada entre a checagem e a exclusão (o Doctrine não apaga os vínculos por conta própria).
 - **QR Code:** codifica a URL absoluta da página daquele item dentro do próprio sistema
   (ex.: `http://localhost:8080/ac/view/2`). O PDF do desafio termina em "com o link:"
   sem informar o destino; esta é a interpretação adotada enquanto o avaliador não confirma.
@@ -108,6 +115,15 @@ Subir a aplicação:
 composer serve        # http://localhost:8080
 ```
 
+**Banco criado antes da situação por vínculo** (commit `9a56602` ou anterior): aplique
+`data/sql/atualizacao-situacao-por-vinculo.sql`, que cria a coluna `ar_ac_n2.situacao` copiando a
+situação atual da AR, e depois reimporte o `structure.json` para ajustar os vínculos que diferem:
+
+```bash
+mysql -u crud_iti_user -p crud_iti < data/sql/atualizacao-situacao-por-vinculo.sql
+composer importar-estrutura -- data/exemplo/structure.json
+```
+
 ### Usuário de demonstração
 
 Para avaliação local, crie o usuário de demonstração com a senha `Demo@ITI2026`:
@@ -138,9 +154,13 @@ composer test
 ```
 
 - `LeitorEstruturaTest`: leitura do `structure.json` (níveis, AR repetida, vínculos diretos ignorados,
-  situação, truncamento, HTML no lugar do JSON, JSON inválido, BOM).
+  situação por vínculo, truncamento, HTML no lugar do JSON, JSON inválido, BOM).
 - `ArFormTest`: validação da seleção múltipla de AC N2 (regressão).
-- `ArTest`: vínculos N:N sem duplicar.
+- `ArTest`: vínculos N:N sem duplicar, situação de cada vínculo preservada na edição, situação geral.
+- `VinculoArAcN2IntegracaoTest` (grupo `integracao`, usa o MySQL configurado dentro de uma transação
+  desfeita ao final; é pulado sem banco): FK bloqueando a exclusão de AC N2 com AR, troca de vínculos
+  no mesmo flush, exclusão de AR e reimportação idempotente.
+- `LoginFormTest`: campos enviados como lista são recusados sem erro 500.
 - `CredenciaisAdapterTest`: login válido, senha errada, usuário inexistente, hash de senha.
 - `GeradorQrCodeTest`: saída SVG.
 - `ProtecaoDeRotasTest`: todas as rotas de CRUD, importação e QR redirecionam para o login sem sessão.

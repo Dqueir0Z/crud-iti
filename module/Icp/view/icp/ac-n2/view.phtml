@@ -2,13 +2,14 @@
 /**
  * @var Laminas\View\Renderer\PhpRenderer $this
  * @var Icp\Entity\AcN2 $acN2
+ * @var int $totalArs
+ * @var list<Icp\Entity\VinculoArAcN2> $vinculos as primeiras $limite, em ordem alfabética da AR
+ * @var int $limite
  * @var Application\Form\CsrfForm $formExclusao
  */
 
 $this->headTitle($acN2->getNome());
-$ac       = $acN2->getAc();
-$totalArs = $acN2->getArs()->count();
-$limite   = 50;
+$ac = $acN2->getAc();
 ?>
 <nav aria-label="breadcrumb">
     <ol class="breadcrumb">
@@ -60,9 +61,13 @@ $limite   = 50;
     <p class="text-body-secondary">Nenhuma AR vinculada.</p>
 <?php else : ?>
     <ul class="list-group">
-        <?php foreach ($acN2->getArs()->slice(0, $limite) as $ar) : ?>
-            <li class="list-group-item">
+        <?php foreach ($vinculos as $vinculo) : ?>
+            <?php $ar = $vinculo->getAr(); ?>
+            <li class="list-group-item d-flex justify-content-between align-items-center gap-2">
                 <a href="<?= $this->url('ar/view', ['id' => $ar->getId()]) ?>"><?= $this->escapeHtml($ar->getNome()) ?></a>
+                <?php if ($vinculo->getSituacao() !== Icp\Enum\Situacao::Credenciado) : ?>
+                    <?= $this->partial('icp/partial/situacao', ['situacao' => $vinculo->getSituacao()]) ?>
+                <?php endif; ?>
             </li>
         <?php endforeach; ?>
     </ul>

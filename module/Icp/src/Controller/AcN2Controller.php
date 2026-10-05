@@ -8,10 +8,12 @@ use Application\Form\CsrfForm;
 use Doctrine\DBAL\Exception\ForeignKeyConstraintViolationException;
 use Icp\Entity\Ac;
 use Icp\Entity\AcN2;
+use Icp\Entity\Ar;
 use Icp\Enum\Situacao;
 use Icp\Form\AcN2Form;
 use Icp\Repository\AcN2Repository;
 use Icp\Repository\AcRepository;
+use Icp\Repository\ArRepository;
 use Laminas\Http\Response;
 use Laminas\View\Model\ViewModel;
 
@@ -19,6 +21,8 @@ use function sprintf;
 
 final class AcN2Controller extends AbstractIcpController
 {
+    private const LIMITE_AR_NO_DETALHE = 50;
+
     public function indexAction(): ViewModel
     {
         $busca    = $this->buscaInformada();
@@ -45,7 +49,16 @@ final class AcN2Controller extends AbstractIcpController
             return $this->naoEncontrado('A AC N2 solicitada não existe.');
         }
 
-        return new ViewModel(['acN2' => $acN2, 'formExclusao' => $this->formularioExclusao()]);
+        /** @var ArRepository $ars */
+        $ars = $this->entityManager->getRepository(Ar::class);
+
+        return new ViewModel([
+            'acN2'         => $acN2,
+            'totalArs'     => $acN2->contarArs(),
+            'vinculos'     => $ars->findVinculosDaAcN2($acN2, self::LIMITE_AR_NO_DETALHE),
+            'limite'       => self::LIMITE_AR_NO_DETALHE,
+            'formExclusao' => $this->formularioExclusao(),
+        ]);
     }
 
     public function createAction(): ViewModel|Response
@@ -134,7 +147,7 @@ final class AcN2Controller extends AbstractIcpController
             $this->flashMessenger()->addErrorMessage(CsrfForm::MENSAGEM_TOKEN_INVALIDO);
         } elseif (! $acN2 instanceof AcN2) {
             $this->flashMessenger()->addErrorMessage('A AC N2 solicitada não existe.');
-        } elseif (($total = $acN2->getArs()->count()) > 0) {
+        } elseif (($total = $acN2->contarArs()) > 0) {
             $this->flashMessenger()->addErrorMessage(sprintf(
                 'Não é possível excluir a AC N2 "%s": ela possui %d AR vinculada(s). Remova esses vínculos antes.',
                 $acN2->getNome(),
@@ -143,6 +156,9 @@ final class AcN2Controller extends AbstractIcpController
 
             return $this->redirect()->toRoute('ac-n2/view', ['id' => $acN2->getId()]);
         } else {
+            // A checagem acima só serve para a mensagem; quem garante a regra é o
+            // FK RESTRICT de ar_ac_n2 (uma AR vinculada entre a checagem e o
+            // DELETE faz o banco recusar a exclusão).
             try {
                 $nome = $acN2->getNome();
                 $this->entityManager->remove($acN2);

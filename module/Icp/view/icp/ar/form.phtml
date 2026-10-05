@@ -34,7 +34,13 @@ $voltar = $ar === null ? $this->url('ar') : $this->url('ar/view', ['id' => $ar->
                 'ajuda'    => 'Uma AR pode estar vinculada a várias AC N2. Use Ctrl (ou Cmd) + clique para selecionar mais de uma.',
             ]) ?>
 
-            <?= $this->partial('partial/campo', ['elemento' => $form->get('situacao')]) ?>
+            <?= $this->partial('partial/campo', [
+                'elemento' => $form->get('situacao'),
+                'ajuda'    => $ar !== null && $ar->temSituacoesDiferentes()
+                    ? 'Esta AR tem situação diferente conforme a AC N2. Mantendo este campo, cada vínculo conserva '
+                        . 'a sua situação; alterando-o, a nova situação vale para todos os vínculos.'
+                    : 'Novos vínculos recebem esta situação. Alterá-la aplica a nova situação a todos os vínculos.',
+            ]) ?>
             <?= $this->formHidden($form->get('csrf')) ?>
 
             <button type="submit" class="btn btn-primary">Salvar</button>

@@ -83,7 +83,7 @@ foreach ($acN2s as $acN2) {
             <tbody>
                 <?php foreach ($ars as $ar) : ?>
                     <?php
-                    $vinculos = $ar->getAcN2s()->toArray();
+                    $vinculos = $ar->getAcN2s();
                     $visiveis = array_slice($vinculos, 0, 2);
                     $restantes = count($vinculos) - count($visiveis);
                     ?>

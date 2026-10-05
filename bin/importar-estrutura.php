@@ -44,7 +44,11 @@ foreach ($resultado->totais as $entidade => $totais) {
         $totais['inalterados']
     ));
 }
-fwrite(STDOUT, sprintf("Vínculos AR-AC N2 criados: %d\n", $resultado->vinculosCriados));
+fwrite(STDOUT, sprintf(
+    "Vínculos AR-AC N2 criados: %d  com situação atualizada: %d\n",
+    $resultado->vinculosCriados,
+    $resultado->vinculosAtualizados
+));
 
 foreach ($resultado->avisos as $aviso) {
     fwrite(STDOUT, 'Aviso: ' . $aviso . "\n");

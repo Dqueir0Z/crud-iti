@@ -18,6 +18,9 @@ final class ResultadoImportacao
 
     public int $vinculosCriados = 0;
 
+    /** Vínculos que já existiam e tiveram a situação alterada. */
+    public int $vinculosAtualizados = 0;
+
     /** @param list<string> $avisos */
     public function __construct(public readonly array $avisos = [])
     {

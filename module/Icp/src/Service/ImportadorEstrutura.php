@@ -18,8 +18,9 @@ use Icp\Repository\ArRepository;
  *
  * A importação é idempotente: os registros são casados pelo id do ITI
  * (coluna iti_id), então reenviar o mesmo arquivo atualiza em vez de duplicar.
- * Vínculos AR ↔ AC N2 presentes no arquivo são adicionados; vínculos feitos
- * manualmente são preservados. Tudo roda em uma única transação.
+ * Vínculos AR ↔ AC N2 presentes no arquivo são criados ou têm a situação
+ * atualizada; vínculos ausentes do arquivo (inclusive os feitos manualmente)
+ * são preservados. Tudo roda em uma única transação.
  */
 final class ImportadorEstrutura
 {
@@ -115,29 +116,41 @@ final class ImportadorEstrutura
         $existentes  = $repositorio->indexarPorItiIdComVinculos();
 
         foreach ($estrutura->ars as $itiId => $dados) {
-            $ar   = $existentes[$itiId] ?? null;
-            $nova = $ar === null;
+            $ar       = $existentes[$itiId] ?? null;
+            $nova     = $ar === null;
+            $alterado = false;
 
             if ($nova) {
                 $ar = new Ar($dados['nome'], $dados['situacao'], $itiId);
                 $this->entityManager->persist($ar);
-                $alterado = false;
-            } else {
-                $alterado = $this->atualizarBasicos($ar, $dados['nome'], $dados['situacao']);
+            } elseif ($ar->getNome() !== $dados['nome']) {
+                $ar->setNome($dados['nome']);
+                $alterado = true;
             }
 
-            foreach ($dados['acN2ItiIds'] as $acN2ItiId) {
-                if ($ar->vincularAcN2($acN2s[$acN2ItiId])) {
+            // A situação vem de cada vínculo; a da AR é recalculada sobre todos os
+            // vínculos que ela tem no banco, inclusive os que não estão no arquivo.
+            foreach ($dados['vinculos'] as $acN2ItiId => $situacao) {
+                $acN2 = $acN2s[$acN2ItiId];
+
+                if ($ar->vincularAcN2($acN2, $situacao)) {
                     $resultado->vinculosCriados++;
                     $alterado = true;
+                } elseif ($ar->definirSituacaoDoVinculo($acN2, $situacao)) {
+                    $resultado->vinculosAtualizados++;
+                    $alterado = true;
                 }
+            }
+
+            if ($ar->recalcularSituacao()) {
+                $alterado = true;
             }
 
             $resultado->contar('AR', $nova ? 'criados' : ($alterado ? 'atualizados' : 'inalterados'));
         }
     }
 
-    private function atualizarBasicos(Ac|AcN2|Ar $entidade, string $nome, Situacao $situacao): bool
+    private function atualizarBasicos(Ac|AcN2 $entidade, string $nome, Situacao $situacao): bool
     {
         $alterado = false;
 

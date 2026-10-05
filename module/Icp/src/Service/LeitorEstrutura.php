@@ -10,7 +10,9 @@ use Icp\Form\EspecificacaoCampos;
 use JsonException;
 
 use function array_key_exists;
+use function array_map;
 use function array_slice;
+use function array_unique;
 use function array_values;
 use function count;
 use function implode;
@@ -35,7 +37,8 @@ use const JSON_THROW_ON_ERROR;
  *   ac-root → ac-1 (AC) → ac-2 (AC N2) → ar (AR)
  *
  * Particularidades do arquivo real tratadas aqui:
- * - a mesma AR aparece sob várias AC N2 (vínculos N:N são unificados pelo id);
+ * - a mesma AR aparece sob várias AC N2 (vínculos N:N são unificados pelo id),
+ *   às vezes com situação diferente em cada uma; a situação fica por vínculo;
  * - algumas AR aparecem direto sob uma AC 1º nível; esse vínculo não existe no
  *   modelo (AR → AC N2) e é ignorado, com aviso;
  * - AR sem nenhuma AC N2 após a leitura não são importadas, com aviso.
@@ -53,7 +56,7 @@ final class LeitorEstrutura
     private array $acs = [];
     /** @var array<int, array{nome: string, situacao: Situacao, acItiId: int}> */
     private array $acN2s = [];
-    /** @var array<int, array{nome: string, situacao: Situacao, acN2ItiIds: array<int, int>}> */
+    /** @var array<int, array{nome: string, situacao: Situacao, vinculos: array<int, Situacao>}> */
     private array $ars = [];
     /** @var array<string, list<string>> avisos agrupados por categoria */
     private array $avisos = [];
@@ -175,7 +178,7 @@ final class LeitorEstrutura
     private function registrarAr(array $no, ?int $acN2ItiId): void
     {
         if (! isset($this->ars[$no['id']])) {
-            $this->ars[$no['id']] = ['nome' => $no['nome'], 'situacao' => $no['situacao'], 'acN2ItiIds' => []];
+            $this->ars[$no['id']] = ['nome' => $no['nome'], 'situacao' => $no['situacao'], 'vinculos' => []];
         } elseif ($this->ars[$no['id']]['nome'] !== $no['nome']) {
             $this->avisar('duplicidade', sprintf(
                 'AR id %d aparece com nomes diferentes ("%s" e "%s"); mantido o primeiro.',
@@ -185,29 +188,63 @@ final class LeitorEstrutura
             ));
         }
 
-        if ($acN2ItiId !== null) {
-            $this->ars[$no['id']]['acN2ItiIds'][$acN2ItiId] = $acN2ItiId;
+        if ($acN2ItiId === null) {
+            return;
+        }
+
+        $vinculos = &$this->ars[$no['id']]['vinculos'];
+        if (! isset($vinculos[$acN2ItiId])) {
+            $vinculos[$acN2ItiId] = $no['situacao'];
+        } elseif ($vinculos[$acN2ItiId] !== $no['situacao']) {
+            $this->avisar('duplicidade', sprintf(
+                'AR "%s" aparece mais de uma vez sob a mesma AC N2 com situações diferentes; mantida a primeira.',
+                $no['nome']
+            ));
         }
     }
 
-    /** @return array<int, array{nome: string, situacao: Situacao, acN2ItiIds: list<int>}> */
+    /** @return array<int, array{nome: string, situacao: Situacao, vinculos: array<int, Situacao>}> */
     private function arsComVinculo(): array
     {
         $resultado = [];
+        $comSituacaoMista = 0;
+
         foreach ($this->ars as $itiId => $ar) {
-            if ($ar['acN2ItiIds'] === []) {
+            if ($ar['vinculos'] === []) {
                 $this->avisar('sem-vinculo', sprintf('AR "%s" está ligada apenas a uma AC 1º nível e não foi importada.', $ar['nome']));
                 continue;
             }
 
+            if (count(array_unique(array_map(static fn (Situacao $s): int => $s->value, $ar['vinculos']))) > 1) {
+                $comSituacaoMista++;
+            }
+
             $resultado[$itiId] = [
-                'nome'       => $ar['nome'],
-                'situacao'   => $ar['situacao'],
-                'acN2ItiIds' => array_values($ar['acN2ItiIds']),
+                'nome'     => $ar['nome'],
+                'situacao' => self::situacaoGeral($ar['vinculos']),
+                'vinculos' => $ar['vinculos'],
             ];
         }
 
+        if ($comSituacaoMista > 0) {
+            $this->avisar('situacao-vinculo', sprintf(
+                '%d AR têm situação diferente conforme a AC N2; a situação foi registrada em cada vínculo.',
+                $comSituacaoMista
+            ));
+        }
+
         return $resultado;
+    }
+
+    /**
+     * Mesma regra de Ar::recalcularSituacao(): Credenciado se algum vínculo
+     * estiver credenciado; senão, Em credenciamento.
+     *
+     * @param array<int, Situacao> $vinculos
+     */
+    private static function situacaoGeral(array $vinculos): Situacao
+    {
+        return in_array(Situacao::Credenciado, $vinculos, true) ? Situacao::Credenciado : Situacao::EmCredenciamento;
     }
 
     /**

@@ -82,7 +82,7 @@ $query = array_filter(['busca' => $busca, 'ac' => $acId, 'situacao' => $situacao
                             <a class="link-secondary" href="<?= $this->url('ac/view', ['id' => $acN2->getAc()->getId()]) ?>"><?= $this->escapeHtml($acN2->getAc()->getNome()) ?></a>
                         </td>
                         <td><?= $this->partial('icp/partial/situacao', ['situacao' => $acN2->getSituacao()]) ?></td>
-                        <td class="text-end"><?= $acN2->getArs()->count() ?></td>
+                        <td class="text-end"><?= $acN2->contarArs() ?></td>
                         <td class="text-end acoes">
                             <a class="btn btn-sm btn-outline-secondary" href="<?= $this->url('ac-n2/view', ['id' => $acN2->getId()]) ?>">Visualizar</a>
                             <a class="btn btn-sm btn-outline-primary" href="<?= $this->url('ac-n2/edit', ['id' => $acN2->getId()]) ?>">Editar</a>

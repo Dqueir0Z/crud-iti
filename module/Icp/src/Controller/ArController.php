@@ -95,7 +95,7 @@ final class ArController extends AbstractIcpController
         $form = new ArForm($this->repositorioAcN2()->findAllComAc());
         $form->setData([
             'nome'     => $ar->getNome(),
-            'acN2s'    => array_map(static fn (AcN2 $n): int => (int) $n->getId(), $ar->getAcN2s()->toArray()),
+            'acN2s'    => array_map(static fn (AcN2 $n): int => (int) $n->getId(), $ar->getAcN2s()),
             'situacao' => $ar->getSituacao()->value,
         ]);
 
@@ -104,10 +104,18 @@ final class ArController extends AbstractIcpController
 
             if ($form->isValid()) {
                 /** @var array{nome: string, acN2s: list<int>, situacao: int} $dados */
-                $dados = $form->getData();
+                $dados    = $form->getData();
+                $situacao = Situacao::from($dados['situacao']);
                 $ar->setNome($dados['nome']);
-                $ar->setSituacao(Situacao::from($dados['situacao']));
                 $ar->definirAcN2s($this->repositorioAcN2()->findByIds($dados['acN2s']));
+
+                // Só uma mudança explícita do campo vale para todos os vínculos;
+                // editar o nome ou as AC N2 preserva a situação de cada vínculo.
+                if ($situacao !== $ar->getSituacao()) {
+                    $ar->aplicarSituacaoATodos($situacao);
+                } else {
+                    $ar->recalcularSituacao();
+                }
 
                 $this->entityManager->flush();
 
@@ -133,7 +141,7 @@ final class ArController extends AbstractIcpController
         } elseif (! $ar instanceof Ar) {
             $this->flashMessenger()->addErrorMessage('A Autoridade de Registro solicitada não existe.');
         } else {
-            // Os vínculos em ar_ac_n2 são removidos junto (ON DELETE CASCADE).
+            // Os vínculos saem junto: orphanRemoval no Doctrine e ON DELETE CASCADE no banco.
             $nome = $ar->getNome();
             $this->entityManager->remove($ar);
             $this->entityManager->flush();

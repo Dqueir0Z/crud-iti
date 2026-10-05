@@ -11,11 +11,21 @@ use Doctrine\ORM\Mapping as ORM;
 use Icp\Enum\Situacao;
 use Icp\Repository\ArRepository;
 
+use function array_map;
+use function count;
+use function spl_object_id;
+use function strcmp;
+use function usort;
+
 /**
  * Autoridade de Registro (tipo "ar").
  *
  * No structure.json do ITI a mesma AR aparece sob várias AC N2, por isso o
- * vínculo é N:N (tabela ar_ac_n2). Toda AR deve ter ao menos uma AC N2.
+ * vínculo é N:N (tabela ar_ac_n2), e a situação é registrada por vínculo
+ * (VinculoArAcN2). Toda AR deve ter ao menos uma AC N2.
+ *
+ * A coluna situacao da AR é a situação geral, usada na listagem e no filtro:
+ * Credenciado se ao menos um vínculo estiver credenciado.
  */
 #[ORM\Entity(repositoryClass: ArRepository::class)]
 #[ORM\Table(name: 'ar')]
@@ -37,13 +47,18 @@ class Ar
     #[ORM\Column(type: 'smallint', enumType: Situacao::class, options: ['default' => 4002])]
     private Situacao $situacao;
 
-    /** @var Collection<int, AcN2> */
-    #[ORM\ManyToMany(targetEntity: AcN2::class, inversedBy: 'ars')]
-    #[ORM\JoinTable(name: 'ar_ac_n2')]
-    #[ORM\JoinColumn(name: 'ar_id', referencedColumnName: 'id', nullable: false, onDelete: 'CASCADE')]
-    #[ORM\InverseJoinColumn(name: 'ac_n2_id', referencedColumnName: 'id', nullable: false, onDelete: 'RESTRICT')]
-    #[ORM\OrderBy(['nome' => 'ASC'])]
-    private Collection $acN2s;
+    /** @var Collection<int, VinculoArAcN2> */
+    #[ORM\OneToMany(targetEntity: VinculoArAcN2::class, mappedBy: 'ar', cascade: ['persist'], orphanRemoval: true)]
+    private Collection $vinculos;
+
+    /**
+     * Vínculos retirados antes do flush. Se o mesmo par voltar, a instância é
+     * reaproveitada: criar outra com a mesma chave faria o INSERT ocorrer antes
+     * do DELETE do orphanRemoval e violaria a chave primária. Não é persistido.
+     *
+     * @var array<int, VinculoArAcN2> indexado por spl_object_id da AC N2
+     */
+    private array $vinculosRetirados = [];
 
     #[ORM\Column(name: 'created_at', type: 'datetime_immutable')]
     private DateTimeImmutable $createdAt;
@@ -59,7 +74,7 @@ class Ar
         $this->nome     = $nome;
         $this->situacao = $situacao;
         $this->itiId    = $itiId;
-        $this->acN2s    = new ArrayCollection();
+        $this->vinculos = new ArrayCollection();
 
         $agora = new DateTimeImmutable();
 
@@ -87,36 +102,70 @@ class Ar
         $this->nome = $nome;
     }
 
+    /** Situação geral da AR (ver regra no docblock da classe). */
     public function getSituacao(): Situacao
     {
         return $this->situacao;
     }
 
-    public function setSituacao(Situacao $situacao): void
+    /** @return list<VinculoArAcN2> ordenados pelo nome da AC N2 */
+    public function getVinculos(): array
     {
-        $this->situacao = $situacao;
+        $vinculos = $this->vinculos->getValues();
+        usort(
+            $vinculos,
+            static fn (VinculoArAcN2 $a, VinculoArAcN2 $b): int => strcmp($a->getAcN2()->getNome(), $b->getAcN2()->getNome())
+        );
+
+        return $vinculos;
     }
 
-    /** @return Collection<int, AcN2> */
-    public function getAcN2s(): Collection
+    /** @return list<AcN2> ordenadas pelo nome */
+    public function getAcN2s(): array
     {
-        return $this->acN2s;
+        return array_map(static fn (VinculoArAcN2 $v): AcN2 => $v->getAcN2(), $this->getVinculos());
     }
 
-    /** Vincula a AC N2; retorna false se o vínculo já existia. */
-    public function vincularAcN2(AcN2 $acN2): bool
+    /** Há vínculos com situações diferentes (só acontece por importação). */
+    public function temSituacoesDiferentes(): bool
     {
-        if ($this->acN2s->contains($acN2)) {
+        $situacoes = [];
+        foreach ($this->vinculos as $vinculo) {
+            $situacoes[$vinculo->getSituacao()->value] = true;
+        }
+
+        return count($situacoes) > 1;
+    }
+
+    /**
+     * Vincula a AC N2; retorna false se o vínculo já existia.
+     * Sem situação informada, o vínculo recebe a situação geral da AR.
+     */
+    public function vincularAcN2(AcN2 $acN2, ?Situacao $situacao = null): bool
+    {
+        if ($this->vinculoCom($acN2) !== null) {
             return false;
         }
 
-        $this->acN2s->add($acN2);
+        $chave   = spl_object_id($acN2);
+        $vinculo = $this->vinculosRetirados[$chave] ?? new VinculoArAcN2($this, $acN2, $situacao ?? $this->situacao);
+        unset($this->vinculosRetirados[$chave]);
+
+        if ($situacao !== null) {
+            $vinculo->definirSituacao($situacao);
+        }
+
+        $this->vinculos->add($vinculo);
+        $acN2->adicionarVinculo($vinculo);
+        $this->marcarAlteracao();
 
         return true;
     }
 
     /**
-     * Substitui os vínculos pelos informados (usado no formulário de edição).
+     * Substitui as AC N2 vinculadas pelas informadas (formulário). Trabalha por
+     * diferença: vínculos que continuam mantêm a instância e a situação; os
+     * novos recebem a situação geral da AR.
      *
      * @param iterable<AcN2> $acN2s
      */
@@ -127,15 +176,72 @@ class Ar
             $novas[spl_object_id($acN2)] = $acN2;
         }
 
-        foreach ($this->acN2s->toArray() as $atual) {
-            if (! isset($novas[spl_object_id($atual)])) {
-                $this->acN2s->removeElement($atual);
+        foreach ($this->vinculos->toArray() as $vinculo) {
+            if (! isset($novas[spl_object_id($vinculo->getAcN2())])) {
+                $this->retirarVinculo($vinculo);
             }
         }
 
         foreach ($novas as $acN2) {
             $this->vincularAcN2($acN2);
         }
+    }
+
+    /**
+     * Ajusta a situação do vínculo com a AC N2 (importação).
+     * Retorna true se mudou; false se não mudou ou se o vínculo não existe.
+     */
+    public function definirSituacaoDoVinculo(AcN2 $acN2, Situacao $situacao): bool
+    {
+        $vinculo = $this->vinculoCom($acN2);
+        if ($vinculo === null || ! $vinculo->definirSituacao($situacao)) {
+            return false;
+        }
+
+        $this->marcarAlteracao();
+
+        return true;
+    }
+
+    /**
+     * Aplica a situação à AR e a todos os vínculos (edição manual em que o
+     * usuário alterou o campo situação).
+     */
+    public function aplicarSituacaoATodos(Situacao $situacao): void
+    {
+        $this->situacao = $situacao;
+        foreach ($this->vinculos as $vinculo) {
+            $vinculo->definirSituacao($situacao);
+        }
+        $this->marcarAlteracao();
+    }
+
+    /**
+     * Recalcula a situação geral a partir dos vínculos: Credenciado se algum
+     * vínculo estiver credenciado; senão, Em credenciamento. Sem vínculos,
+     * mantém a atual. Retorna true se mudou.
+     */
+    public function recalcularSituacao(): bool
+    {
+        if ($this->vinculos->isEmpty()) {
+            return false;
+        }
+
+        $geral = Situacao::EmCredenciamento;
+        foreach ($this->vinculos as $vinculo) {
+            if ($vinculo->getSituacao() === Situacao::Credenciado) {
+                $geral = Situacao::Credenciado;
+                break;
+            }
+        }
+
+        if ($geral === $this->situacao) {
+            return false;
+        }
+
+        $this->situacao = $geral;
+
+        return true;
     }
 
     public function getCreatedAt(): DateTimeImmutable
@@ -150,6 +256,34 @@ class Ar
 
     #[ORM\PreUpdate]
     public function atualizarData(): void
+    {
+        $this->updatedAt = new DateTimeImmutable();
+    }
+
+    private function vinculoCom(AcN2 $acN2): ?VinculoArAcN2
+    {
+        foreach ($this->vinculos as $vinculo) {
+            if ($vinculo->getAcN2() === $acN2) {
+                return $vinculo;
+            }
+        }
+
+        return null;
+    }
+
+    private function retirarVinculo(VinculoArAcN2 $vinculo): void
+    {
+        $this->vinculos->removeElement($vinculo);
+        $vinculo->getAcN2()->retirarVinculo($vinculo);
+        $this->vinculosRetirados[spl_object_id($vinculo->getAcN2())] = $vinculo;
+        $this->marcarAlteracao();
+    }
+
+    /**
+     * Mudanças só nos vínculos não alteram colunas da AR, e o PreUpdate não
+     * dispararia; atualizar a data aqui registra a alteração na própria AR.
+     */
+    private function marcarAlteracao(): void
     {
         $this->updatedAt = new DateTimeImmutable();
     }

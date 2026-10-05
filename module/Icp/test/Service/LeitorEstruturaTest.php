@@ -39,7 +39,52 @@ final class LeitorEstruturaTest extends TestCase
 
         self::assertSame('AR COMPARTILHADA', $estrutura->ars[1000]['nome']);
         // Aparece 2x sob a 100 (duplicada no arquivo) e 1x sob a 200: dois vínculos únicos.
-        self::assertSame([100, 200], $estrutura->ars[1000]['acN2ItiIds']);
+        self::assertSame([100, 200], array_keys($estrutura->ars[1000]['vinculos']));
+    }
+
+    /**
+     * Regressão (achado B1 da revisão final do Codex): a situação de uma AR que
+     * difere entre as AC N2 era descartada; a primeira valia para todas.
+     */
+    public function testSituacaoFicaPorVinculoEAGeralEhCredenciadoSeAlgumForCredenciado(): void
+    {
+        $estrutura = $this->lerFixture();
+
+        self::assertSame(
+            [100 => Situacao::Credenciado, 200 => Situacao::EmCredenciamento],
+            $estrutura->ars[1000]['vinculos']
+        );
+        self::assertSame(Situacao::Credenciado, $estrutura->ars[1000]['situacao']);
+        self::assertContains(
+            '1 AR têm situação diferente conforme a AC N2; a situação foi registrada em cada vínculo.',
+            $estrutura->avisos
+        );
+    }
+
+    public function testMesmaArRepetidaSobAMesmaAcN2ComOutraSituacaoMantemAPrimeira(): void
+    {
+        $json = json_encode([
+            'tipo'                 => 'ac-root',
+            'entidades_vinculadas' => [[
+                'tipo' => 'ac-1', 'id' => 1, 'situacao' => 4002, 'nome' => 'AC',
+                'entidades_vinculadas' => [[
+                    'tipo' => 'ac-2', 'id' => 2, 'situacao' => 4002, 'nome' => 'AC N2',
+                    'entidades_vinculadas' => [
+                        ['tipo' => 'ar', 'id' => 3, 'situacao' => 4001, 'nome' => 'AR'],
+                        ['tipo' => 'ar', 'id' => 3, 'situacao' => 4002, 'nome' => 'AR'],
+                    ],
+                ]],
+            ]],
+        ]);
+
+        $estrutura = (new LeitorEstrutura())->ler((string) $json);
+
+        self::assertSame([2 => Situacao::EmCredenciamento], $estrutura->ars[3]['vinculos']);
+        self::assertSame(Situacao::EmCredenciamento, $estrutura->ars[3]['situacao']);
+        self::assertContains(
+            'AR "AR" aparece mais de uma vez sob a mesma AC N2 com situações diferentes; mantida a primeira.',
+            $estrutura->avisos
+        );
     }
 
     public function testVinculoDiretoComAc1EhIgnoradoEArSemAcN2NaoEhImportada(): void

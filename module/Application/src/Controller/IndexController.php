@@ -8,6 +8,7 @@ use Doctrine\ORM\EntityManagerInterface;
 use Icp\Entity\Ac;
 use Icp\Entity\AcN2;
 use Icp\Entity\Ar;
+use Icp\Repository\ArRepository;
 use Laminas\Mvc\Controller\AbstractActionController;
 use Laminas\View\Model\ViewModel;
 
@@ -22,15 +23,14 @@ class IndexController extends AbstractActionController
 
     public function indexAction(): ViewModel
     {
-        $totalVinculos = (int) $this->entityManager
-            ->createQuery('SELECT COUNT(n.id) FROM ' . Ar::class . ' r JOIN r.acN2s n')
-            ->getSingleScalarResult();
+        /** @var ArRepository $ars */
+        $ars = $this->entityManager->getRepository(Ar::class);
 
         return new ViewModel([
             'totalAc'       => $this->entityManager->getRepository(Ac::class)->count([]),
             'totalAcN2'     => $this->entityManager->getRepository(AcN2::class)->count([]),
-            'totalAr'       => $this->entityManager->getRepository(Ar::class)->count([]),
-            'totalVinculos' => $totalVinculos,
+            'totalAr'       => $ars->count([]),
+            'totalVinculos' => $ars->contarVinculos(),
         ]);
     }
 }

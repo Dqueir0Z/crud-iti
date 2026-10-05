@@ -48,7 +48,7 @@
                     "nome": "AC BETA RFB",
                     "id": 200,
                     "entidades_vinculadas": [
-                        {"entidade": "AR", "tipo": "ar", "situacao": 4002, "nome": "AR COMPARTILHADA", "id": 1000, "open": true},
+                        {"entidade": "AR", "tipo": "ar", "situacao": 4001, "nome": "AR COMPARTILHADA", "id": 1000, "open": true},
                         {"entidade": "AR", "tipo": "ar", "situacao": 9999, "nome": "AR SITUACAO ESTRANHA", "id": 1003, "open": true},
                         {"entidade": "AR", "tipo": "ar", "situacao": 4002, "nome": "", "id": 1004, "open": true}
                     ]

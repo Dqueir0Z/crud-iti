@@ -6,7 +6,9 @@ namespace Icp\Repository;
 
 use Doctrine\ORM\EntityRepository;
 use Doctrine\ORM\Query;
+use Icp\Entity\AcN2;
 use Icp\Entity\Ar;
+use Icp\Entity\VinculoArAcN2;
 use Icp\Enum\Situacao;
 
 /**
@@ -15,13 +17,15 @@ use Icp\Enum\Situacao;
 class ArRepository extends EntityRepository
 {
     /**
-     * Listagem com as AC N2 já carregadas. O filtro por AC N2 usa um join
-     * separado para não esconder os demais vínculos da AR na exibição.
+     * Listagem com os vínculos e as AC N2 já carregados. O filtro por AC N2 usa
+     * um join separado para não esconder os demais vínculos da AR na exibição.
      */
     public function createListagemQuery(?string $busca, ?int $acN2Id, ?Situacao $situacao): Query
     {
         $qb = $this->createQueryBuilder('r')
-            ->leftJoin('r.acN2s', 'n')
+            ->leftJoin('r.vinculos', 'v')
+            ->addSelect('v')
+            ->leftJoin('v.acN2', 'n')
             ->addSelect('n')
             ->orderBy('r.nome', 'ASC');
 
@@ -30,7 +34,7 @@ class ArRepository extends EntityRepository
         }
 
         if ($acN2Id !== null) {
-            $qb->innerJoin('r.acN2s', 'filtro', 'WITH', 'filtro.id = :acN2Id')
+            $qb->innerJoin('r.vinculos', 'filtro', 'WITH', 'IDENTITY(filtro.acN2) = :acN2Id')
                 ->setParameter('acN2Id', $acN2Id);
         }
 
@@ -42,7 +46,8 @@ class ArRepository extends EntityRepository
     }
 
     /**
-     * Pares (AC N2, AR) para montar a árvore da estrutura sem hidratar entidades.
+     * Vínculos (AC N2, AR, situação do vínculo) para montar a árvore da
+     * estrutura sem hidratar entidades.
      *
      * @return list<array{acN2Id: int, id: int, nome: string, situacao: Situacao|int}>
      */
@@ -50,12 +55,39 @@ class ArRepository extends EntityRepository
     {
         return $this->getEntityManager()
             ->createQuery(
-                'SELECT n.id AS acN2Id, r.id, r.nome, r.situacao
-                 FROM ' . Ar::class . ' r
-                 JOIN r.acN2s n
+                'SELECT IDENTITY(v.acN2) AS acN2Id, r.id, r.nome, v.situacao
+                 FROM ' . VinculoArAcN2::class . ' v
+                 JOIN v.ar r
                  ORDER BY r.nome ASC'
             )
             ->getArrayResult();
+    }
+
+    /**
+     * Vínculos de uma AC N2 com a AR carregada, em ordem alfabética da AR.
+     *
+     * @return list<VinculoArAcN2>
+     */
+    public function findVinculosDaAcN2(AcN2 $acN2, int $limite): array
+    {
+        return $this->getEntityManager()
+            ->createQuery(
+                'SELECT v, r
+                 FROM ' . VinculoArAcN2::class . ' v
+                 JOIN v.ar r
+                 WHERE v.acN2 = :acN2
+                 ORDER BY r.nome ASC'
+            )
+            ->setParameter('acN2', $acN2)
+            ->setMaxResults($limite)
+            ->getResult();
+    }
+
+    public function contarVinculos(): int
+    {
+        return (int) $this->getEntityManager()
+            ->createQuery('SELECT COUNT(r.id) FROM ' . VinculoArAcN2::class . ' v JOIN v.ar r')
+            ->getSingleScalarResult();
     }
 
     /**
@@ -67,7 +99,9 @@ class ArRepository extends EntityRepository
     public function indexarPorItiIdComVinculos(): array
     {
         return $this->createQueryBuilder('r', 'r.itiId')
-            ->leftJoin('r.acN2s', 'n')
+            ->leftJoin('r.vinculos', 'v')
+            ->addSelect('v')
+            ->leftJoin('v.acN2', 'n')
             ->addSelect('n')
             ->where('r.itiId IS NOT NULL')
             ->getQuery()

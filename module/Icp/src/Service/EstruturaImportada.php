@@ -16,7 +16,8 @@ final class EstruturaImportada
     /**
      * @param array<int, array{nome: string, situacao: Situacao}> $acs
      * @param array<int, array{nome: string, situacao: Situacao, acItiId: int}> $acN2s
-     * @param array<int, array{nome: string, situacao: Situacao, acN2ItiIds: list<int>}> $ars
+     * @param array<int, array{nome: string, situacao: Situacao, vinculos: array<int, Situacao>}> $ars
+     *        situacao = situação geral; vinculos = situação por id do ITI da AC N2
      * @param list<string> $avisos
      */
     public function __construct(
@@ -31,7 +32,7 @@ final class EstruturaImportada
     {
         $total = 0;
         foreach ($this->ars as $ar) {
-            $total += count($ar['acN2ItiIds']);
+            $total += count($ar['vinculos']);
         }
 
         return $total;
