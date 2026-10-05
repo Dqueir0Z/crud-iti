@@ -19,7 +19,7 @@
     </source>
 
     <testsuites>
-        <testsuite name="Laminas MVC Skeleton Test Suite">
+        <testsuite name="CRUD ITI">
             <directory>./module/*/test</directory>
         </testsuite>
     </testsuites>

@@ -1,16 +1,36 @@
 <?php
 
 /**
- * Local Configuration Override
+ * Configuração local (credenciais e ajustes do ambiente).
  *
- * This configuration override file is for overriding environment-specific and
- * security-sensitive configuration information. Copy this file without the
- * .dist extension at the end and populate values as needed.
- *
- * NOTE: This file is ignored from Git by default with the .gitignore included
- * in laminas-mvc-skeleton. This is a good practice, as it prevents sensitive
- * credentials from accidentally being committed into version control.
+ * Copie para config/autoload/local.php e preencha os valores. O local.php é
+ * ignorado pelo Git, para que credenciais não sejam versionadas.
  */
 
+declare(strict_types=1);
+
+use Doctrine\DBAL\Driver\PDO\MySQL\Driver;
+
 return [
+    'doctrine' => [
+        'connection' => [
+            'orm_default' => [
+                'driverClass' => Driver::class,
+                'params'      => [
+                    'host'     => '127.0.0.1',
+                    'port'     => '3306',
+                    'user'     => 'crud_iti_user',
+                    'password' => 'TROQUE-PELA-SENHA-DO-BANCO',
+                    'dbname'   => 'crud_iti',
+                    'charset'  => 'utf8mb4',
+                ],
+            ],
+        ],
+    ],
+
+    // Opcional: endereço usado nos links do QR Code. Útil para ler o QR pelo
+    // celular na mesma rede (ex.: 'http://192.168.0.10:8080').
+    // 'icp' => [
+    //     'qrcode' => ['base_url' => null],
+    // ],
 ];

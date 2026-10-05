@@ -1,22 +1,25 @@
 {
-    "name": "laminas/laminas-mvc-skeleton",
-    "description": "Laminas MVC Skeleton Application",
+    "name": "diogo/crud-iti",
+    "description": "CRUD da estrutura ICP-Brasil (AC, AC N2 e AR) com Laminas MVC, Doctrine ORM e MySQL",
     "type": "project",
-    "license": "BSD-3-Clause",
+    "license": "proprietary",
     "keywords": [
         "laminas",
-        "mvc",
-        "skeleton",
-        "framework"
+        "doctrine",
+        "icp-brasil",
+        "crud"
     ],
     "require": {
         "php": "~8.1.0 || ~8.2.0 || ~8.3.0",
+        "chillerlan/php-qrcode": "^5.0",
         "doctrine/doctrine-orm-module": "^6.3",
         "laminas/laminas-authentication": "^2.19",
         "laminas/laminas-component-installer": "^3.4.0",
         "laminas/laminas-development-mode": "^3.12.0",
         "laminas/laminas-form": "^3.24",
+        "laminas/laminas-i18n": "^2.33",
         "laminas/laminas-mvc": "^3.7.0",
+        "laminas/laminas-mvc-plugin-flashmessenger": "^1.11",
         "laminas/laminas-session": "^2.27",
         "laminas/laminas-skeleton-installer": "^1.3.0"
     },
@@ -31,12 +34,15 @@
     "autoload": {
         "psr-4": {
             "Application\\": "module/Application/src/",
-	    "Icp\\": "module/Icp/src/"
+            "Auth\\": "module/Auth/src/",
+            "Icp\\": "module/Icp/src/"
         }
     },
     "autoload-dev": {
         "psr-4": {
-            "ApplicationTest\\": "module/Application/test/"
+            "ApplicationTest\\": "module/Application/test/",
+            "AuthTest\\": "module/Auth/test/",
+            "IcpTest\\": "module/Icp/test/"
         }
     },
     "scripts": {
@@ -55,10 +61,12 @@
         "post-update-cmd": "@clear-config-cache",
         "serve": [
             "Composer\\Config::disableProcessTimeout",
-            "php -S 0.0.0.0:8080 -t public"
+            "php -d opcache.enable_cli=1 -S 0.0.0.0:8080 -t public"
         ],
         "test": "vendor/bin/phpunit",
-        "static-analysis": "vendor/bin/psalm --stats"
+        "static-analysis": "vendor/bin/psalm --stats",
+        "criar-usuario": "php bin/criar-usuario.php",
+        "importar-estrutura": "php bin/importar-estrutura.php"
     },
     "scripts-descriptions": {
         "clear-config-cache": "Clears merged config cache. Required for config changes to be applied.",
@@ -69,7 +77,9 @@
         "development-status": "Detail whether or not the application is in development mode.",
         "serve": "Start the built-in PHP web server and serve the application.",
         "static-analysis": "Run static analysis tool Psalm.",
-        "test": "Run unit tests."
+        "test": "Run unit tests.",
+        "criar-usuario": "Cria (ou redefine a senha de) um usuário: composer criar-usuario -- email \"Nome\"",
+        "importar-estrutura": "Importa um structure.json pela linha de comando: composer importar-estrutura -- caminho.json"
     },
     "config": {
         "sort-packages": true,
@@ -77,6 +87,7 @@
             "laminas/laminas-component-installer": true,
             "laminas/laminas-skeleton-installer": true,
             "dealerdirect/phpcodesniffer-composer-installer": true
-        }
+        },
+        "optimize-autoloader": true
     }
 }
