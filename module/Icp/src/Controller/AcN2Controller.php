@@ -124,6 +124,10 @@ final class AcN2Controller extends AbstractIcpController
 
     public function deleteAction(): Response
     {
+        if (! $this->getRequest()->isPost()) {
+            return $this->metodoNaoPermitido();
+        }
+
         $acN2 = $this->entityManager->find(AcN2::class, $this->idDaRota());
 
         if (! $this->csrfValido()) {

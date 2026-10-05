@@ -122,6 +122,10 @@ final class ArController extends AbstractIcpController
 
     public function deleteAction(): Response
     {
+        if (! $this->getRequest()->isPost()) {
+            return $this->metodoNaoPermitido();
+        }
+
         $ar = $this->entityManager->find(Ar::class, $this->idDaRota());
 
         if (! $this->csrfValido()) {

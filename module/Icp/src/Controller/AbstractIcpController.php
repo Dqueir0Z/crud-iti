@@ -84,6 +84,18 @@ abstract class AbstractIcpController extends AbstractActionController
             && (new CsrfForm())->setData($this->params()->fromPost())->isValid();
     }
 
+    /** Resposta 405 para ações que só aceitam POST (ex.: exclusão acessada por link). */
+    protected function metodoNaoPermitido(): Response
+    {
+        /** @var Response $response */
+        $response = $this->getResponse();
+        $response->setStatusCode(Response::STATUS_CODE_405);
+        $response->getHeaders()->addHeaderLine('Allow', 'POST');
+        $response->setContent('Método não permitido. A exclusão deve ser feita pelo botão Excluir.');
+
+        return $response;
+    }
+
     /** Formulário apenas com o token, usado pelos botões de exclusão. */
     protected function formularioExclusao(): CsrfForm
     {

@@ -67,6 +67,19 @@ class ProtecaoDeRotasTest extends AbstractHttpControllerTestCase
         $this->assertResponseStatusCode(404);
     }
 
+    public function testExclusaoPorGetRetorna405(): void
+    {
+        $this->getApplicationServiceLocator()
+            ->get(AuthenticationService::class)
+            ->getStorage()
+            ->write(['id' => 1, 'email' => 'pessoa@exemplo.test', 'nome' => 'Pessoa']);
+
+        $this->dispatch('/ac/delete/1', 'GET');
+
+        $this->assertResponseStatusCode(405);
+        $this->assertResponseHeaderContains('Allow', 'POST');
+    }
+
     public function testUsuarioAutenticadoPassaPeloGuard(): void
     {
         $servicos = $this->getApplicationServiceLocator();

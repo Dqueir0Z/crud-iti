@@ -100,6 +100,10 @@ final class AcController extends AbstractIcpController
 
     public function deleteAction(): Response
     {
+        if (! $this->getRequest()->isPost()) {
+            return $this->metodoNaoPermitido();
+        }
+
         $ac = $this->entityManager->find(Ac::class, $this->idDaRota());
 
         if (! $this->csrfValido()) {
