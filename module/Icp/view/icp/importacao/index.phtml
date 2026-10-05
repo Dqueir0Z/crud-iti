@@ -1,0 +1,108 @@
+<?php
+/**
+ * @var Laminas\View\Renderer\PhpRenderer $this
+ * @var Icp\Form\ImportacaoForm $form
+ * @var Icp\Service\ResultadoImportacao|null $resultado
+ * @var string|null $erro
+ */
+
+$this->headTitle('Importar structure.json');
+$form->setAttribute('action', $this->url('importacao'));
+$form->prepare();
+?>
+<h1 class="h3 mb-3">Importar structure.json</h1>
+
+<div class="row g-4">
+    <div class="col-lg-5">
+        <div class="card shadow-sm">
+            <div class="card-body">
+                <p class="small text-body-secondary">
+                    Envie o arquivo no formato publicado pelo ITI. A importação pode ser repetida:
+                    registros já importados são atualizados pelo id do ITI, sem duplicar.
+                </p>
+
+                <?php if ($erro !== null) : ?>
+                    <div class="alert alert-danger" role="alert"><?= $this->escapeHtml($erro) ?></div>
+                <?php endif; ?>
+                <?= $this->partial('icp/partial/erro-csrf', ['form' => $form]) ?>
+
+                <?= $this->form()->openTag($form) ?>
+                    <?= $this->partial('partial/campo', [
+                        'elemento' => $form->get('arquivo'),
+                        'ajuda'    => 'Somente .json, até ' . Icp\Form\ImportacaoForm::TAMANHO_MAXIMO . '.',
+                    ]) ?>
+                    <?= $this->formHidden($form->get('csrf')) ?>
+                    <button type="submit" class="btn btn-primary" data-carregando="Importando…">Importar</button>
+                <?= $this->form()->closeTag() ?>
+            </div>
+        </div>
+
+        <div class="small text-body-secondary mt-3">
+            <p class="mb-1"><strong>Onde obter o arquivo:</strong></p>
+            <p class="mb-1">
+                <a href="https://estrutura.iti.gov.br/assets/jsons/structure.json" target="_blank" rel="noopener">estrutura.iti.gov.br/assets/jsons/structure.json</a>
+            </p>
+            <p class="mb-0">
+                O endereço <code>/assets/structure.json</code> (sem <code>jsons/</code>) devolve a página HTML
+                do site, não os dados.
+            </p>
+        </div>
+    </div>
+
+    <div class="col-lg-7">
+        <?php if ($resultado !== null) : ?>
+            <div class="card border-success shadow-sm">
+                <div class="card-body">
+                    <h2 class="h5 text-success">Importação concluída</h2>
+                    <table class="table table-sm mb-3">
+                        <thead>
+                            <tr>
+                                <th scope="col">Entidade</th>
+                                <th scope="col" class="text-end">Criados</th>
+                                <th scope="col" class="text-end">Atualizados</th>
+                                <th scope="col" class="text-end">Sem alteração</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <?php foreach ($resultado->totais as $entidade => $totais) : ?>
+                                <tr>
+                                    <th scope="row"><?= $this->escapeHtml($entidade) ?></th>
+                                    <td class="text-end"><?= number_format($totais['criados'], 0, ',', '.') ?></td>
+                                    <td class="text-end"><?= number_format($totais['atualizados'], 0, ',', '.') ?></td>
+                                    <td class="text-end"><?= number_format($totais['inalterados'], 0, ',', '.') ?></td>
+                                </tr>
+                            <?php endforeach; ?>
+                        </tbody>
+                    </table>
+                    <p class="mb-3">
+                        Vínculos AR ↔ AC N2 criados: <strong><?= number_format($resultado->vinculosCriados, 0, ',', '.') ?></strong>
+                    </p>
+
+                    <?php if ($resultado->avisos !== []) : ?>
+                        <h3 class="h6">Avisos</h3>
+                        <ul class="small mb-3">
+                            <?php foreach ($resultado->avisos as $aviso) : ?>
+                                <li><?= $this->escapeHtml($aviso) ?></li>
+                            <?php endforeach; ?>
+                        </ul>
+                    <?php endif; ?>
+
+                    <a class="btn btn-outline-success" href="<?= $this->url('estrutura') ?>">Ver estrutura importada</a>
+                </div>
+            </div>
+        <?php else : ?>
+            <div class="card bg-body-tertiary border-0">
+                <div class="card-body small">
+                    <h2 class="h6">Como o arquivo é interpretado</h2>
+                    <ul class="mb-0">
+                        <li><code>ac-root</code> (AC RAIZ) é o ponto de partida e não vira registro.</li>
+                        <li><code>ac-1</code> → <strong>AC</strong>; <code>ac-2</code> → <strong>AC N2</strong> da AC acima; <code>ar</code> → <strong>AR</strong>.</li>
+                        <li>A mesma AR aparece sob várias AC N2 no arquivo; ela é gravada uma vez, com todos os vínculos.</li>
+                        <li><code>situacao</code> 4002 = credenciado, 4001 = em credenciamento.</li>
+                        <li>Vínculos de AR direto com AC 1º nível são ignorados e informados nos avisos.</li>
+                    </ul>
+                </div>
+            </div>
+        <?php endif; ?>
+    </div>
+</div>

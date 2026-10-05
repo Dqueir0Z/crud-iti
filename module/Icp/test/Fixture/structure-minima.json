@@ -1,0 +1,59 @@
+{
+    "tipo": "ac-root",
+    "nome": "AC RAIZ",
+    "id": 1,
+    "situacao": 4002,
+    "entidades_vinculadas": [
+        {
+            "entidade": "AC 1º Nível",
+            "tipo": "ac-1",
+            "situacao": 4002,
+            "nome": "AC ALFA",
+            "id": 10,
+            "entidades_vinculadas": [
+                {
+                    "entidade": "AC 2º Nível",
+                    "tipo": "ac-2",
+                    "situacao": 4002,
+                    "nome": "AC ALFA MULTIPLA",
+                    "id": 100,
+                    "entidades_vinculadas": [
+                        {"entidade": "AR", "tipo": "ar", "situacao": 4002, "nome": "AR COMPARTILHADA", "id": 1000, "open": true},
+                        {"entidade": "AR", "tipo": "ar", "situacao": 4001, "nome": "  AR NOVA  ", "id": 1001, "open": true},
+                        {"entidade": "AR", "tipo": "ar", "situacao": 4002, "nome": "AR COMPARTILHADA", "id": 1000, "open": true}
+                    ]
+                },
+                {
+                    "entidade": "AC 2º Nível",
+                    "tipo": "ac-2",
+                    "situacao": 4001,
+                    "nome": "AC ALFA SEM AR",
+                    "id": 101
+                },
+                {"entidade": "AR", "tipo": "ar", "situacao": 4002, "nome": "AR COMPARTILHADA", "id": 1000, "open": true},
+                {"entidade": "AR", "tipo": "ar", "situacao": 4002, "nome": "AR SO NO PRIMEIRO NIVEL", "id": 1002, "open": true}
+            ]
+        },
+        {
+            "entidade": "AC 1º Nível",
+            "tipo": "ac-1",
+            "situacao": 4002,
+            "nome": "AC BETA",
+            "id": 20,
+            "entidades_vinculadas": [
+                {
+                    "entidade": "AC 2º Nível",
+                    "tipo": "ac-2",
+                    "situacao": 4002,
+                    "nome": "AC BETA RFB",
+                    "id": 200,
+                    "entidades_vinculadas": [
+                        {"entidade": "AR", "tipo": "ar", "situacao": 4002, "nome": "AR COMPARTILHADA", "id": 1000, "open": true},
+                        {"entidade": "AR", "tipo": "ar", "situacao": 9999, "nome": "AR SITUACAO ESTRANHA", "id": 1003, "open": true},
+                        {"entidade": "AR", "tipo": "ar", "situacao": 4002, "nome": "", "id": 1004, "open": true}
+                    ]
+                }
+            ]
+        }
+    ]
+}
