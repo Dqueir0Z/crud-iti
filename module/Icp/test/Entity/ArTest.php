@@ -111,6 +111,49 @@ final class ArTest extends TestCase
         self::assertSame(Situacao::Credenciado, $ar->getSituacao());
     }
 
+    public function testEdicaoSemMudarASituacaoPreservaOsVinculos(): void
+    {
+        $a  = new AcN2('A', $this->ac);
+        $b  = new AcN2('B', $this->ac);
+        $ar = new Ar('AR', Situacao::Credenciado);
+        $ar->vincularAcN2($a, Situacao::EmCredenciamento);
+        $ar->vincularAcN2($b, Situacao::Credenciado);
+
+        $ar->aplicarEdicao('AR RENOMEADA', [$a, $b], Situacao::Credenciado);
+
+        self::assertSame('AR RENOMEADA', $ar->getNome());
+        self::assertTrue($ar->temSituacoesDiferentes());
+        self::assertSame(Situacao::Credenciado, $ar->getSituacao());
+    }
+
+    public function testEdicaoQueRetiraOUnicoVinculoCredenciadoRecalculaAGeral(): void
+    {
+        $a  = new AcN2('A', $this->ac);
+        $b  = new AcN2('B', $this->ac);
+        $ar = new Ar('AR', Situacao::Credenciado);
+        $ar->vincularAcN2($a, Situacao::EmCredenciamento);
+        $ar->vincularAcN2($b, Situacao::Credenciado);
+
+        $ar->aplicarEdicao('AR', [$a], Situacao::Credenciado);
+
+        self::assertSame(Situacao::EmCredenciamento, $ar->getSituacao());
+        self::assertSame(Situacao::EmCredenciamento, $ar->getVinculos()[0]->getSituacao());
+    }
+
+    public function testEdicaoQueMudaASituacaoValeParaTodosOsVinculos(): void
+    {
+        $a  = new AcN2('A', $this->ac);
+        $b  = new AcN2('B', $this->ac);
+        $ar = new Ar('AR', Situacao::Credenciado);
+        $ar->vincularAcN2($a, Situacao::EmCredenciamento);
+        $ar->vincularAcN2($b, Situacao::Credenciado);
+
+        $ar->aplicarEdicao('AR', [$a, $b], Situacao::EmCredenciamento);
+
+        self::assertFalse($ar->temSituacoesDiferentes());
+        self::assertSame(Situacao::EmCredenciamento, $ar->getSituacao());
+    }
+
     public function testAplicarSituacaoATodosAlteraAArEOsVinculos(): void
     {
         $a  = new AcN2('A', $this->ac);

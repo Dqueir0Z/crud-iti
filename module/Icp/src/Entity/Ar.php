@@ -260,6 +260,39 @@ class Ar
         $this->updatedAt = new DateTimeImmutable();
     }
 
+    /**
+     * Depois de gravada, a AR esquece os vínculos retirados: devolver a mesma
+     * AC N2 num flush seguinte cria um vínculo novo, com a situação geral atual.
+     * (Retirar um vínculo marca a AR como alterada, então o PostUpdate dispara.)
+     */
+    #[ORM\PostPersist]
+    #[ORM\PostUpdate]
+    public function esquecerVinculosRetirados(): void
+    {
+        $this->vinculosRetirados = [];
+    }
+
+    /**
+     * Aplica a edição manual do formulário. Só uma mudança explícita do campo
+     * situação vale para todos os vínculos; editar o nome ou as AC N2 preserva a
+     * situação de cada vínculo e recalcula a geral.
+     *
+     * @param iterable<AcN2> $acN2s
+     */
+    public function aplicarEdicao(string $nome, iterable $acN2s, Situacao $situacao): void
+    {
+        $alterouSituacao = $situacao !== $this->situacao;
+
+        $this->nome = $nome;
+        $this->definirAcN2s($acN2s);
+
+        if ($alterouSituacao) {
+            $this->aplicarSituacaoATodos($situacao);
+        } else {
+            $this->recalcularSituacao();
+        }
+    }
+
     private function vinculoCom(AcN2 $acN2): ?VinculoArAcN2
     {
         foreach ($this->vinculos as $vinculo) {

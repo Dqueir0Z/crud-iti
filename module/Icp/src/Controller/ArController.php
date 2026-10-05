@@ -104,18 +104,12 @@ final class ArController extends AbstractIcpController
 
             if ($form->isValid()) {
                 /** @var array{nome: string, acN2s: list<int>, situacao: int} $dados */
-                $dados    = $form->getData();
-                $situacao = Situacao::from($dados['situacao']);
-                $ar->setNome($dados['nome']);
-                $ar->definirAcN2s($this->repositorioAcN2()->findByIds($dados['acN2s']));
-
-                // Só uma mudança explícita do campo vale para todos os vínculos;
-                // editar o nome ou as AC N2 preserva a situação de cada vínculo.
-                if ($situacao !== $ar->getSituacao()) {
-                    $ar->aplicarSituacaoATodos($situacao);
-                } else {
-                    $ar->recalcularSituacao();
-                }
+                $dados = $form->getData();
+                $ar->aplicarEdicao(
+                    $dados['nome'],
+                    $this->repositorioAcN2()->findByIds($dados['acN2s']),
+                    Situacao::from($dados['situacao'])
+                );
 
                 $this->entityManager->flush();
 

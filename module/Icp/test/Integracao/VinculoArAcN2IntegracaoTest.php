@@ -6,6 +6,7 @@ namespace IcpTest\Integracao;
 
 use Doctrine\Common\Collections\Collection;
 use Doctrine\DBAL\Connection;
+use Doctrine\DBAL\Exception\ConnectionException;
 use Doctrine\DBAL\Exception\ForeignKeyConstraintViolationException;
 use Doctrine\ORM\EntityManagerInterface;
 use Icp\Entity\Ac;
@@ -19,10 +20,10 @@ use Laminas\Mvc\Application;
 use PHPUnit\Framework\Attributes\Group;
 use PHPUnit\Framework\TestCase;
 use ReflectionProperty;
-use Throwable;
 
 use function chdir;
 use function getcwd;
+use function is_file;
 use function json_encode;
 
 /**
@@ -46,12 +47,21 @@ final class VinculoArAcN2IntegracaoTest extends TestCase
         chdir(__DIR__ . '/../../../..');
 
         try {
+            if (! is_file('config/autoload/local.php')) {
+                self::markTestSkipped('Sem config/autoload/local.php: banco não configurado.');
+            }
+
+            // Erros de configuração ou de bootstrap não são engolidos: só a falta
+            // de conexão com o MySQL faz o teste ser pulado.
             $app = Application::init(require 'config/application.config.php');
             /** @var EntityManagerInterface $em */
             $em = $app->getServiceManager()->get('doctrine.entitymanager.orm_default');
-            $em->getConnection()->executeQuery('SELECT 1 FROM ar_ac_n2 LIMIT 1');
-        } catch (Throwable $e) {
-            self::markTestSkipped('Banco indisponível para o teste de integração: ' . $e->getMessage());
+
+            try {
+                $em->getConnection()->executeQuery('SELECT 1');
+            } catch (ConnectionException $e) {
+                self::markTestSkipped('MySQL indisponível para o teste de integração: ' . $e->getMessage());
+            }
         } finally {
             chdir((string) $diretorio);
         }
@@ -155,6 +165,33 @@ final class VinculoArAcN2IntegracaoTest extends TestCase
         $ar->definirAcN2s([$b]);
         $this->em->flush();
         self::assertSame(1, $this->contarVinculos($ar));
+    }
+
+    /**
+     * Retirar, gravar e devolver a mesma AC N2 cria um vínculo novo com a
+     * situação geral atual, e não o antigo (revisão do Codex).
+     */
+    public function testDevolverAcN2DepoisDoFlushCriaVinculoNovoComASituacaoAtual(): void
+    {
+        [$a, $b, $ar] = $this->criarCenario();   // A em credenciamento
+        $ar->vincularAcN2($b, Situacao::Credenciado);
+        $this->em->flush();
+
+        $ar->definirAcN2s([$b]);
+        $ar->recalcularSituacao();
+        $this->em->flush();
+        self::assertSame(Situacao::Credenciado, $ar->getSituacao());
+
+        $ar->definirAcN2s([$a, $b]);
+        $this->em->flush();
+
+        self::assertSame(
+            Situacao::Credenciado->value,
+            (int) $this->conexao->fetchOne(
+                'SELECT situacao FROM ar_ac_n2 WHERE ar_id = ? AND ac_n2_id = ?',
+                [$ar->getId(), $a->getId()]
+            )
+        );
     }
 
     public function testExcluirArRemoveOsVinculos(): void
