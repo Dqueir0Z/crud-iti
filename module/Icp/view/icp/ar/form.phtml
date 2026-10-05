@@ -1,0 +1,39 @@
+<?php
+/**
+ * @var Laminas\View\Renderer\PhpRenderer $this
+ * @var Icp\Form\ArForm $form
+ * @var string $titulo
+ * @var Icp\Entity\Ar|null $ar
+ */
+
+$this->headTitle($titulo);
+$form->prepare();
+$voltar = $ar === null ? $this->url('ar') : $this->url('ar/view', ['id' => $ar->getId()]);
+?>
+<h1 class="h3 mb-3"><?= $this->escapeHtml($titulo) ?></h1>
+
+<?= $this->partial('icp/partial/erro-csrf', ['form' => $form]) ?>
+
+<div class="card shadow-sm">
+    <div class="card-body">
+        <?= $this->form()->openTag($form) ?>
+            <?= $this->partial('partial/campo', ['elemento' => $form->get('nome')]) ?>
+
+            <div class="mb-2">
+                <label for="filtro-opcoes" class="visually-hidden">Filtrar AC N2</label>
+                <input type="search" id="filtro-opcoes" class="form-control form-control-sm"
+                       placeholder="Filtrar a lista de AC N2…" data-filtrar-select="acN2s">
+            </div>
+            <?= $this->partial('partial/campo', [
+                'elemento' => $form->get('acN2s'),
+                'ajuda'    => 'Uma AR pode estar vinculada a várias AC N2. Use Ctrl (ou Cmd) + clique para selecionar mais de uma.',
+            ]) ?>
+
+            <?= $this->partial('partial/campo', ['elemento' => $form->get('situacao')]) ?>
+            <?= $this->formHidden($form->get('csrf')) ?>
+
+            <button type="submit" class="btn btn-primary">Salvar</button>
+            <a href="<?= $voltar ?>" class="btn btn-secondary">Cancelar</a>
+        <?= $this->form()->closeTag() ?>
+    </div>
+</div>

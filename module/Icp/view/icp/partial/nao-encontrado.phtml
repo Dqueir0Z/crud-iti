@@ -1,0 +1,13 @@
+<?php
+/**
+ * @var Laminas\View\Renderer\PhpRenderer $this
+ * @var string $mensagem
+ */
+
+$this->headTitle('Não encontrado');
+?>
+<div class="text-center py-5">
+    <h1 class="h3">Registro não encontrado</h1>
+    <p class="text-body-secondary"><?= $this->escapeHtml($mensagem) ?></p>
+    <a class="btn btn-secondary" href="<?= $this->url('home') ?>">Voltar ao início</a>
+</div>

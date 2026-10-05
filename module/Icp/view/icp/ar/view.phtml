@@ -1,0 +1,62 @@
+<?php
+/**
+ * @var Laminas\View\Renderer\PhpRenderer $this
+ * @var Icp\Entity\Ar $ar
+ * @var Application\Form\CsrfForm $formExclusao
+ */
+
+$this->headTitle($ar->getNome());
+$acN2s = $ar->getAcN2s();
+?>
+<nav aria-label="breadcrumb">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a href="<?= $this->url('ar') ?>">AR</a></li>
+        <li class="breadcrumb-item active" aria-current="page"><?= $this->escapeHtml($ar->getNome()) ?></li>
+    </ol>
+</nav>
+
+<div class="d-flex flex-wrap justify-content-between align-items-start gap-2 mb-3">
+    <div>
+        <span class="badge text-bg-light border mb-1">Autoridade de Registro</span>
+        <h1 class="h3 mb-0"><?= $this->escapeHtml($ar->getNome()) ?></h1>
+    </div>
+    <div class="d-flex flex-wrap gap-2">
+        <?= $this->botaoQrCode('ar', (int) $ar->getId(), $ar->getNome(), 'btn btn-outline-dark') ?>
+        <a class="btn btn-outline-primary" href="<?= $this->url('ar/edit', ['id' => $ar->getId()]) ?>">Editar</a>
+        <?= $this->partial('icp/partial/botao-excluir', [
+            'url'          => $this->url('ar/delete', ['id' => $ar->getId()]),
+            'nome'         => $ar->getNome(),
+            'formExclusao' => $formExclusao,
+            'classe'       => 'btn btn-outline-danger',
+        ]) ?>
+    </div>
+</div>
+
+<dl class="row mb-4">
+    <dt class="col-sm-3">Situação</dt>
+    <dd class="col-sm-9"><?= $this->partial('icp/partial/situacao', ['situacao' => $ar->getSituacao()]) ?></dd>
+    <dt class="col-sm-3">ID no ITI</dt>
+    <dd class="col-sm-9"><?= $ar->getItiId() ?? '<span class="text-body-secondary">cadastro manual</span>' ?></dd>
+    <dt class="col-sm-3">Atualizado em</dt>
+    <dd class="col-sm-9"><?= $ar->getUpdatedAt()->format('d/m/Y H:i') ?></dd>
+</dl>
+
+<h2 class="h5">Vinculada a <?= $acN2s->count() ?> AC N2</h2>
+<div class="table-responsive">
+    <table class="table table-sm align-middle">
+        <thead>
+            <tr>
+                <th scope="col">AC N2</th>
+                <th scope="col">AC principal</th>
+            </tr>
+        </thead>
+        <tbody>
+            <?php foreach ($acN2s as $acN2) : ?>
+                <tr>
+                    <td><a href="<?= $this->url('ac-n2/view', ['id' => $acN2->getId()]) ?>"><?= $this->escapeHtml($acN2->getNome()) ?></a></td>
+                    <td><a class="link-secondary" href="<?= $this->url('ac/view', ['id' => $acN2->getAc()->getId()]) ?>"><?= $this->escapeHtml($acN2->getAc()->getNome()) ?></a></td>
+                </tr>
+            <?php endforeach; ?>
+        </tbody>
+    </table>
+</div>

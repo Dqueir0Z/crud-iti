@@ -1,51 +1,83 @@
-<h1>Autoridades Certificadoras</h1>
+<?php
+/**
+ * @var Laminas\View\Renderer\PhpRenderer $this
+ * @var Laminas\Paginator\Paginator<int, Icp\Entity\Ac> $acs
+ * @var string $busca
+ * @var Icp\Enum\Situacao|null $situacao
+ * @var Application\Form\CsrfForm $formExclusao
+ */
 
-<p>
-    <a href="<?= $this->url('ac/create') ?>">
-    Cadastrar nova AC
-</a>
-</p>
+use Icp\Enum\Situacao;
 
-<?php if (empty($acs)): ?>
+$this->headTitle('Autoridades Certificadoras');
+$query = array_filter(['busca' => $busca, 'situacao' => $situacao?->value]);
+?>
+<div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+    <h1 class="h3 mb-0">Autoridades Certificadoras</h1>
+    <a class="btn btn-primary" href="<?= $this->url('ac/create') ?>">Cadastrar AC</a>
+</div>
 
-    <p>Nenhuma Autoridade Certificadora cadastrada.</p>
-
-<?php else: ?>
-
-    <table>
-        <thead>
-            <tr>
-                <th>ID</th>
-                <th>Nome</th>
-                <th>Ações</th>
-            </tr>
-        </thead>
-
-        <tbody>
-            <?php foreach ($acs as $ac): ?>
-                <tr>
-                    <td><?= $this->escapeHtml($ac->getId()) ?></td>
-
-                    <td>
-                        <?= $this->escapeHtml($ac->getNome()) ?>
-                    </td>
-
-                    <td>
-                        Visualizar |
-
-                       <a href="<?= $this->url(
-   			 'ac/edit',
-   			 ['id' => $ac->getId()]
-			) ?>">
-			    Editar
-			</a>
-
-                      | Excluir |
-                        Gerar QRCode
-                    </td>
-                </tr>
+<form method="get" action="<?= $this->url('ac') ?>" class="row g-2 mb-3" role="search">
+    <div class="col-md-6">
+        <label for="busca" class="visually-hidden">Buscar por nome</label>
+        <input type="search" id="busca" name="busca" class="form-control" placeholder="Buscar por nome…"
+               value="<?= $this->escapeHtmlAttr($busca) ?>">
+    </div>
+    <div class="col-md-3">
+        <label for="filtro-situacao" class="visually-hidden">Situação</label>
+        <select id="filtro-situacao" name="situacao" class="form-select">
+            <option value="">Todas as situações</option>
+            <?php foreach (Situacao::cases() as $caso) : ?>
+                <option value="<?= $caso->value ?>"<?= $situacao === $caso ? ' selected' : '' ?>><?= $this->escapeHtml($caso->rotulo()) ?></option>
             <?php endforeach; ?>
-        </tbody>
-    </table>
+        </select>
+    </div>
+    <div class="col-md-3 d-flex gap-2">
+        <button type="submit" class="btn btn-outline-primary">Filtrar</button>
+        <?php if ($query !== []) : ?>
+            <a class="btn btn-link" href="<?= $this->url('ac') ?>">Limpar</a>
+        <?php endif; ?>
+    </div>
+</form>
 
+<?php if ($acs->getTotalItemCount() === 0) : ?>
+    <div class="alert alert-light border">
+        <?= $query !== [] ? 'Nenhuma AC encontrada com esses filtros.' : 'Nenhuma Autoridade Certificadora cadastrada.' ?>
+    </div>
+<?php else : ?>
+    <div class="table-responsive">
+        <table class="table table-hover align-middle">
+            <thead>
+                <tr>
+                    <th scope="col">Nome</th>
+                    <th scope="col">Situação</th>
+                    <th scope="col" class="text-end">AC N2</th>
+                    <th scope="col" class="text-end">Ações</th>
+                </tr>
+            </thead>
+            <tbody>
+                <?php foreach ($acs as $ac) : ?>
+                    <tr>
+                        <td>
+                            <a href="<?= $this->url('ac/view', ['id' => $ac->getId()]) ?>"><?= $this->escapeHtml($ac->getNome()) ?></a>
+                        </td>
+                        <td><?= $this->partial('icp/partial/situacao', ['situacao' => $ac->getSituacao()]) ?></td>
+                        <td class="text-end"><?= $ac->getAcN2s()->count() ?></td>
+                        <td class="text-end text-nowrap">
+                            <a class="btn btn-sm btn-outline-secondary" href="<?= $this->url('ac/view', ['id' => $ac->getId()]) ?>">Visualizar</a>
+                            <a class="btn btn-sm btn-outline-primary" href="<?= $this->url('ac/edit', ['id' => $ac->getId()]) ?>">Editar</a>
+                            <?= $this->partial('icp/partial/botao-excluir', [
+                                'url'          => $this->url('ac/delete', ['id' => $ac->getId()]),
+                                'nome'         => $ac->getNome(),
+                                'formExclusao' => $formExclusao,
+                            ]) ?>
+                            <?= $this->botaoQrCode('ac', (int) $ac->getId(), $ac->getNome()) ?>
+                        </td>
+                    </tr>
+                <?php endforeach; ?>
+            </tbody>
+        </table>
+    </div>
 <?php endif; ?>
+
+<?= $this->paginationControl($acs, 'Sliding', 'icp/partial/paginacao', ['rota' => 'ac', 'query' => $query]) ?>

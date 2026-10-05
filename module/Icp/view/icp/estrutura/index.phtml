@@ -1,0 +1,86 @@
+<?php
+/**
+ * Árvore AC → AC N2 → AR, no estilo de estrutura.iti.gov.br.
+ *
+ * @var Laminas\View\Renderer\PhpRenderer $this
+ * @var list<Icp\Entity\Ac> $acs
+ * @var array<int, list<Icp\Entity\AcN2>> $acN2sPorAc
+ * @var array<int, list<array{id: int, nome: string, situacao: Icp\Enum\Situacao}>> $arsPorAcN2
+ * @var int $totalAr
+ */
+
+use Icp\Enum\Situacao;
+
+$this->headTitle('Estrutura');
+$totalAcN2 = array_sum(array_map('count', $acN2sPorAc));
+
+$classeSituacao = static fn (Situacao $s): string => $s === Situacao::EmCredenciamento ? ' em-credenciamento' : '';
+?>
+<div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+    <div>
+        <h1 class="h3 mb-0">Estrutura ICP-Brasil</h1>
+        <p class="text-body-secondary mb-0 small">
+            <?= count($acs) ?> AC · <?= $totalAcN2 ?> AC N2 · <?= number_format($totalAr, 0, ',', '.') ?> AR
+        </p>
+    </div>
+    <div class="d-flex gap-2">
+        <button type="button" class="btn btn-sm btn-outline-secondary" data-arvore-acao="expandir">Expandir tudo</button>
+        <button type="button" class="btn btn-sm btn-outline-secondary" data-arvore-acao="recolher">Recolher tudo</button>
+    </div>
+</div>
+
+<?php if ($acs === []) : ?>
+    <div class="alert alert-info">
+        A estrutura está vazia. <a href="<?= $this->url('importacao') ?>" class="alert-link">Importe o structure.json</a>
+        ou cadastre as entidades manualmente.
+    </div>
+<?php else : ?>
+    <div class="mb-3">
+        <label for="filtro-arvore" class="visually-hidden">Filtrar a estrutura</label>
+        <input type="search" id="filtro-arvore" class="form-control" placeholder="Filtrar por nome (AC, AC N2 ou AR)…">
+    </div>
+
+    <div class="arvore" id="arvore">
+        <div class="arvore-raiz"><span class="struct-label ac-root">AC RAIZ</span></div>
+        <ul class="arvore-nivel">
+            <?php foreach ($acs as $ac) : ?>
+                <?php $filhas = $acN2sPorAc[$ac->getId()] ?? []; ?>
+                <li>
+                    <details>
+                        <summary>
+                            <a class="struct-label ac-1<?= $classeSituacao($ac->getSituacao()) ?>"
+                               href="<?= $this->url('ac/view', ['id' => $ac->getId()]) ?>"><?= $this->escapeHtml($ac->getNome()) ?></a>
+                            <span class="arvore-contagem"><?= count($filhas) ?> AC N2</span>
+                        </summary>
+                        <ul class="arvore-nivel">
+                            <?php foreach ($filhas as $acN2) : ?>
+                                <?php $ars = $arsPorAcN2[$acN2->getId()] ?? []; ?>
+                                <li>
+                                    <details>
+                                        <summary>
+                                            <a class="struct-label ac-2<?= $classeSituacao($acN2->getSituacao()) ?>"
+                                               href="<?= $this->url('ac-n2/view', ['id' => $acN2->getId()]) ?>"><?= $this->escapeHtml($acN2->getNome()) ?></a>
+                                            <span class="arvore-contagem"><?= count($ars) ?> AR</span>
+                                        </summary>
+                                        <ul class="arvore-nivel arvore-folhas">
+                                            <?php foreach ($ars as $ar) : ?>
+                                                <li>
+                                                    <a class="struct-label ar<?= $classeSituacao($ar['situacao']) ?>"
+                                                       href="<?= $this->url('ar/view', ['id' => $ar['id']]) ?>"><?= $this->escapeHtml($ar['nome']) ?></a>
+                                                </li>
+                                            <?php endforeach; ?>
+                                        </ul>
+                                    </details>
+                                </li>
+                            <?php endforeach; ?>
+                        </ul>
+                    </details>
+                </li>
+            <?php endforeach; ?>
+        </ul>
+    </div>
+
+    <p class="small text-body-secondary mt-3">
+        <span class="struct-label ar em-credenciamento">Exemplo</span> = em credenciamento.
+    </p>
+<?php endif; ?>

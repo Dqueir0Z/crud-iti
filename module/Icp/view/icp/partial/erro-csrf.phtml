@@ -1,0 +1,11 @@
+<?php
+/**
+ * @var Laminas\View\Renderer\PhpRenderer $this
+ * @var Laminas\Form\FormInterface $form
+ */
+
+$mensagens = $form->has('csrf') ? $form->get('csrf')->getMessages() : [];
+?>
+<?php foreach ($mensagens as $mensagem) : ?>
+    <div class="alert alert-warning" role="alert"><?= $this->escapeHtml((string) $mensagem) ?></div>
+<?php endforeach; ?>

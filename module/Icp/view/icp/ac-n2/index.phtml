@@ -1,0 +1,98 @@
+<?php
+/**
+ * @var Laminas\View\Renderer\PhpRenderer $this
+ * @var Laminas\Paginator\Paginator<int, Icp\Entity\AcN2> $acN2s
+ * @var string $busca
+ * @var int|null $acId
+ * @var Icp\Enum\Situacao|null $situacao
+ * @var list<Icp\Entity\Ac> $acs
+ * @var Application\Form\CsrfForm $formExclusao
+ */
+
+use Icp\Enum\Situacao;
+
+$this->headTitle('AC de 2º nível');
+$query = array_filter(['busca' => $busca, 'ac' => $acId, 'situacao' => $situacao?->value]);
+?>
+<div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+    <h1 class="h3 mb-0">AC de 2º nível</h1>
+    <a class="btn btn-primary" href="<?= $this->url('ac-n2/create') ?>">Cadastrar AC N2</a>
+</div>
+
+<form method="get" action="<?= $this->url('ac-n2') ?>" class="row g-2 mb-3" role="search">
+    <div class="col-md-4">
+        <label for="busca" class="visually-hidden">Buscar por nome</label>
+        <input type="search" id="busca" name="busca" class="form-control" placeholder="Buscar por nome…"
+               value="<?= $this->escapeHtmlAttr($busca) ?>">
+    </div>
+    <div class="col-md-3">
+        <label for="filtro-ac" class="visually-hidden">AC principal</label>
+        <select id="filtro-ac" name="ac" class="form-select">
+            <option value="">Todas as AC</option>
+            <?php foreach ($acs as $ac) : ?>
+                <option value="<?= $ac->getId() ?>"<?= $acId === $ac->getId() ? ' selected' : '' ?>><?= $this->escapeHtml($ac->getNome()) ?></option>
+            <?php endforeach; ?>
+        </select>
+    </div>
+    <div class="col-md-2">
+        <label for="filtro-situacao" class="visually-hidden">Situação</label>
+        <select id="filtro-situacao" name="situacao" class="form-select">
+            <option value="">Todas as situações</option>
+            <?php foreach (Situacao::cases() as $caso) : ?>
+                <option value="<?= $caso->value ?>"<?= $situacao === $caso ? ' selected' : '' ?>><?= $this->escapeHtml($caso->rotulo()) ?></option>
+            <?php endforeach; ?>
+        </select>
+    </div>
+    <div class="col-md-3 d-flex gap-2">
+        <button type="submit" class="btn btn-outline-primary">Filtrar</button>
+        <?php if ($query !== []) : ?>
+            <a class="btn btn-link" href="<?= $this->url('ac-n2') ?>">Limpar</a>
+        <?php endif; ?>
+    </div>
+</form>
+
+<?php if ($acN2s->getTotalItemCount() === 0) : ?>
+    <div class="alert alert-light border">
+        <?= $query !== [] ? 'Nenhuma AC N2 encontrada com esses filtros.' : 'Nenhuma AC de 2º nível cadastrada.' ?>
+    </div>
+<?php else : ?>
+    <div class="table-responsive">
+        <table class="table table-hover align-middle">
+            <thead>
+                <tr>
+                    <th scope="col">Nome</th>
+                    <th scope="col">AC principal</th>
+                    <th scope="col">Situação</th>
+                    <th scope="col" class="text-end">AR</th>
+                    <th scope="col" class="text-end">Ações</th>
+                </tr>
+            </thead>
+            <tbody>
+                <?php foreach ($acN2s as $acN2) : ?>
+                    <tr>
+                        <td>
+                            <a href="<?= $this->url('ac-n2/view', ['id' => $acN2->getId()]) ?>"><?= $this->escapeHtml($acN2->getNome()) ?></a>
+                        </td>
+                        <td>
+                            <a class="link-secondary" href="<?= $this->url('ac/view', ['id' => $acN2->getAc()->getId()]) ?>"><?= $this->escapeHtml($acN2->getAc()->getNome()) ?></a>
+                        </td>
+                        <td><?= $this->partial('icp/partial/situacao', ['situacao' => $acN2->getSituacao()]) ?></td>
+                        <td class="text-end"><?= $acN2->getArs()->count() ?></td>
+                        <td class="text-end text-nowrap">
+                            <a class="btn btn-sm btn-outline-secondary" href="<?= $this->url('ac-n2/view', ['id' => $acN2->getId()]) ?>">Visualizar</a>
+                            <a class="btn btn-sm btn-outline-primary" href="<?= $this->url('ac-n2/edit', ['id' => $acN2->getId()]) ?>">Editar</a>
+                            <?= $this->partial('icp/partial/botao-excluir', [
+                                'url'          => $this->url('ac-n2/delete', ['id' => $acN2->getId()]),
+                                'nome'         => $acN2->getNome(),
+                                'formExclusao' => $formExclusao,
+                            ]) ?>
+                            <?= $this->botaoQrCode('ac-n2', (int) $acN2->getId(), $acN2->getNome()) ?>
+                        </td>
+                    </tr>
+                <?php endforeach; ?>
+            </tbody>
+        </table>
+    </div>
+<?php endif; ?>
+
+<?= $this->paginationControl($acN2s, 'Sliding', 'icp/partial/paginacao', ['rota' => 'ac-n2', 'query' => $query]) ?>

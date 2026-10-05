@@ -1,0 +1,29 @@
+<?php
+/**
+ * @var Laminas\View\Renderer\PhpRenderer $this
+ * @var Icp\Form\AcN2Form $form
+ * @var string $titulo
+ * @var Icp\Entity\AcN2|null $acN2
+ */
+
+$this->headTitle($titulo);
+$form->prepare();
+$voltar = $acN2 === null ? $this->url('ac-n2') : $this->url('ac-n2/view', ['id' => $acN2->getId()]);
+?>
+<h1 class="h3 mb-3"><?= $this->escapeHtml($titulo) ?></h1>
+
+<?= $this->partial('icp/partial/erro-csrf', ['form' => $form]) ?>
+
+<div class="card shadow-sm">
+    <div class="card-body">
+        <?= $this->form()->openTag($form) ?>
+            <?= $this->partial('partial/campo', ['elemento' => $form->get('nome')]) ?>
+            <?= $this->partial('partial/campo', ['elemento' => $form->get('ac')]) ?>
+            <?= $this->partial('partial/campo', ['elemento' => $form->get('situacao')]) ?>
+            <?= $this->formHidden($form->get('csrf')) ?>
+
+            <button type="submit" class="btn btn-primary">Salvar</button>
+            <a href="<?= $voltar ?>" class="btn btn-secondary">Cancelar</a>
+        <?= $this->form()->closeTag() ?>
+    </div>
+</div>

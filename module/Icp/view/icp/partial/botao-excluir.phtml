@@ -1,0 +1,19 @@
+<?php
+/**
+ * Botão de exclusão: POST com token CSRF e confirmação no navegador.
+ *
+ * @var Laminas\View\Renderer\PhpRenderer $this
+ * @var string $url
+ * @var string $nome
+ * @var Application\Form\CsrfForm $formExclusao
+ * @var string|null $classe
+ */
+?>
+<form method="post" action="<?= $this->escapeHtmlAttr($url) ?>" class="d-inline">
+    <?= $this->formHidden($formExclusao->get('csrf')) ?>
+    <button type="submit"
+            class="<?= $this->escapeHtmlAttr($classe ?? 'btn btn-sm btn-outline-danger') ?>"
+            data-confirmar="<?= $this->escapeHtmlAttr('Excluir "' . $nome . '"? Esta ação não pode ser desfeita.') ?>">
+        Excluir
+    </button>
+</form>

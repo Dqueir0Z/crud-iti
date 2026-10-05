@@ -1,0 +1,75 @@
+<?php
+/**
+ * @var Laminas\View\Renderer\PhpRenderer $this
+ * @var Icp\Entity\AcN2 $acN2
+ * @var Application\Form\CsrfForm $formExclusao
+ */
+
+$this->headTitle($acN2->getNome());
+$ac       = $acN2->getAc();
+$totalArs = $acN2->getArs()->count();
+$limite   = 50;
+?>
+<nav aria-label="breadcrumb">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a href="<?= $this->url('ac-n2') ?>">AC N2</a></li>
+        <li class="breadcrumb-item"><a href="<?= $this->url('ac/view', ['id' => $ac->getId()]) ?>"><?= $this->escapeHtml($ac->getNome()) ?></a></li>
+        <li class="breadcrumb-item active" aria-current="page"><?= $this->escapeHtml($acN2->getNome()) ?></li>
+    </ol>
+</nav>
+
+<div class="d-flex flex-wrap justify-content-between align-items-start gap-2 mb-3">
+    <div>
+        <span class="badge text-bg-light border mb-1">AC 2º nível</span>
+        <h1 class="h3 mb-0"><?= $this->escapeHtml($acN2->getNome()) ?></h1>
+    </div>
+    <div class="d-flex flex-wrap gap-2">
+        <?= $this->botaoQrCode('ac-n2', (int) $acN2->getId(), $acN2->getNome(), 'btn btn-outline-dark') ?>
+        <a class="btn btn-outline-primary" href="<?= $this->url('ac-n2/edit', ['id' => $acN2->getId()]) ?>">Editar</a>
+        <?= $this->partial('icp/partial/botao-excluir', [
+            'url'          => $this->url('ac-n2/delete', ['id' => $acN2->getId()]),
+            'nome'         => $acN2->getNome(),
+            'formExclusao' => $formExclusao,
+            'classe'       => 'btn btn-outline-danger',
+        ]) ?>
+    </div>
+</div>
+
+<dl class="row mb-4">
+    <dt class="col-sm-3">AC principal</dt>
+    <dd class="col-sm-9"><a href="<?= $this->url('ac/view', ['id' => $ac->getId()]) ?>"><?= $this->escapeHtml($ac->getNome()) ?></a></dd>
+    <dt class="col-sm-3">Situação</dt>
+    <dd class="col-sm-9"><?= $this->partial('icp/partial/situacao', ['situacao' => $acN2->getSituacao()]) ?></dd>
+    <dt class="col-sm-3">ID no ITI</dt>
+    <dd class="col-sm-9"><?= $acN2->getItiId() ?? '<span class="text-body-secondary">cadastro manual</span>' ?></dd>
+    <dt class="col-sm-3">Atualizado em</dt>
+    <dd class="col-sm-9"><?= $acN2->getUpdatedAt()->format('d/m/Y H:i') ?></dd>
+</dl>
+
+<div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-2">
+    <h2 class="h5 mb-0">Autoridades de Registro (<?= number_format($totalArs, 0, ',', '.') ?>)</h2>
+    <div class="d-flex gap-2">
+        <?php if ($totalArs > 0) : ?>
+            <a class="btn btn-sm btn-outline-secondary" href="<?= $this->url('ar', [], ['query' => ['acN2' => $acN2->getId()]]) ?>">Ver na listagem de AR</a>
+        <?php endif; ?>
+        <a class="btn btn-sm btn-primary" href="<?= $this->url('ar/create', [], ['query' => ['acN2' => $acN2->getId()]]) ?>">Cadastrar AR</a>
+    </div>
+</div>
+
+<?php if ($totalArs === 0) : ?>
+    <p class="text-body-secondary">Nenhuma AR vinculada.</p>
+<?php else : ?>
+    <ul class="list-group">
+        <?php foreach ($acN2->getArs()->slice(0, $limite) as $ar) : ?>
+            <li class="list-group-item">
+                <a href="<?= $this->url('ar/view', ['id' => $ar->getId()]) ?>"><?= $this->escapeHtml($ar->getNome()) ?></a>
+            </li>
+        <?php endforeach; ?>
+    </ul>
+    <?php if ($totalArs > $limite) : ?>
+        <p class="small text-body-secondary mt-2">
+            Exibindo as primeiras <?= $limite ?>.
+            <a href="<?= $this->url('ar', [], ['query' => ['acN2' => $acN2->getId()]]) ?>">Ver todas as <?= number_format($totalArs, 0, ',', '.') ?> AR</a>.
+        </p>
+    <?php endif; ?>
+<?php endif; ?>
