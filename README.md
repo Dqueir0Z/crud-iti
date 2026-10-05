@@ -49,9 +49,10 @@ não cobre. Ver também os avisos exibidos ao final de cada importação.
   então reenviar o arquivo **atualiza sem duplicar**. Registros cadastrados à mão ficam com `iti_id` nulo.
 - **Exclusão:** bloqueada com mensagem quando há dependentes (AC com AC N2, AC N2 com AR).
   As FKs `ON DELETE RESTRICT` garantem a regra também no banco.
-- **QR Code:** codifica a URL absoluta da página de detalhes do registro
+- **QR Code:** codifica a URL absoluta da página daquele item dentro do próprio sistema
   (ex.: `http://localhost:8080/ac/view/2`). O PDF do desafio termina em "com o link:"
-  sem informar o destino; trocar o alvo é uma alteração em `LinkQrCode`.
+  sem informar o destino; esta é a interpretação adotada enquanto o avaliador não confirma.
+  Trocar o alvo é uma alteração em `LinkQrCode`.
 
 > **Atenção à URL do JSON:** `https://estrutura.iti.gov.br/assets/structure.json` devolve a
 > página HTML do site (aplicação Angular). O arquivo de dados está em
@@ -109,11 +110,18 @@ CRUD_ITI_SENHA='Demo@ITI2026' composer criar-usuario -- demo@crud-iti.test "Usu�
 
 ### Desempenho no WSL
 
-Se o projeto estiver em um disco do Windows (`/mnt/c`, `/mnt/d`…), cada requisição leva
-de 1 a 3 s por causa do acesso a arquivos entre Windows e WSL2. Medido aqui: o bootstrap
-leva 3,5 s em `/mnt/d` e 0,03 s no disco do Linux. Para desenvolver com velocidade normal,
-mantenha o projeto no sistema de arquivos do Linux (ex.: `~/crud-iti`), acessível pelo
-Windows em `\\wsl$\Ubuntu-24.04\home\<usuario>\crud-iti`.
+O projeto fica no sistema de arquivos do Linux (`~/crud-iti`), acessível pelo Windows em
+`\\wsl$\Ubuntu-24.04\home\<usuario>\crud-iti`. Em um disco do Windows (`/mnt/c`, `/mnt/d`…)
+as páginas ficam segundos mais lentas por causa do acesso a arquivos entre Windows e WSL2.
+Medido aqui com o mesmo script, servidor embutido com OPcache e sessão já logada:
+
+| Página | `/mnt/d` | `~/crud-iti` |
+|---|---|---|
+| Lista de AC (`/ac`) | 3,63 s | 0,06 s |
+| Lista de AR (`/ar`, 2.018 registros) | 2,73 s | 0,07 s |
+| Estrutura (`/estrutura`) | 5,24 s | 0,10 s |
+| Importação (`/importar`) | 5,34 s | 0,02 s |
+| Bootstrap da aplicação (CLI) | 3,49 s | 0,03 s |
 
 ## Testes
 
