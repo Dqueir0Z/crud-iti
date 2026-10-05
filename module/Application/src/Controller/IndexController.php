@@ -22,10 +22,15 @@ class IndexController extends AbstractActionController
 
     public function indexAction(): ViewModel
     {
+        $totalVinculos = (int) $this->entityManager
+            ->createQuery('SELECT COUNT(n.id) FROM ' . Ar::class . ' r JOIN r.acN2s n')
+            ->getSingleScalarResult();
+
         return new ViewModel([
-            'totalAc'   => $this->entityManager->getRepository(Ac::class)->count([]),
-            'totalAcN2' => $this->entityManager->getRepository(AcN2::class)->count([]),
-            'totalAr'   => $this->entityManager->getRepository(Ar::class)->count([]),
+            'totalAc'       => $this->entityManager->getRepository(Ac::class)->count([]),
+            'totalAcN2'     => $this->entityManager->getRepository(AcN2::class)->count([]),
+            'totalAr'       => $this->entityManager->getRepository(Ar::class)->count([]),
+            'totalVinculos' => $totalVinculos,
         ]);
     }
 }

@@ -12,12 +12,16 @@ use Icp\Enum\Situacao;
 $this->headTitle('Autoridades Certificadoras');
 $query = array_filter(['busca' => $busca, 'situacao' => $situacao?->value]);
 ?>
-<div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
-    <h1 class="h3 mb-0">Autoridades Certificadoras</h1>
+<div class="page-header">
+    <div>
+        <span class="sobretitulo">Cadastro</span>
+        <h1>Autoridades Certificadoras</h1>
+        <p class="subtitulo">AC de 1º nível credenciadas pela AC Raiz da ICP-Brasil.</p>
+    </div>
     <a class="btn btn-primary" href="<?= $this->url('ac/create') ?>">Cadastrar AC</a>
 </div>
 
-<form method="get" action="<?= $this->url('ac') ?>" class="row g-2 mb-3" role="search">
+<form method="get" action="<?= $this->url('ac') ?>" class="row g-2 filtros" role="search">
     <div class="col-md-6">
         <label for="busca" class="visually-hidden">Buscar por nome</label>
         <input type="search" id="busca" name="busca" class="form-control" placeholder="Buscar por nome…"
@@ -41,18 +45,19 @@ $query = array_filter(['busca' => $busca, 'situacao' => $situacao?->value]);
 </form>
 
 <?php if ($acs->getTotalItemCount() === 0) : ?>
-    <div class="alert alert-light border">
-        <?= $query !== [] ? 'Nenhuma AC encontrada com esses filtros.' : 'Nenhuma Autoridade Certificadora cadastrada.' ?>
+    <div class="estado-vazio">
+        <strong><?= $query !== [] ? 'Nenhuma AC encontrada com esses filtros.' : 'Nenhuma Autoridade Certificadora cadastrada.' ?></strong>
+        <?= $query !== [] ? 'Ajuste ou limpe os filtros.' : 'Cadastre o primeiro registro ou importe o structure.json do ITI.' ?>
     </div>
 <?php else : ?>
     <div class="table-responsive">
-        <table class="table table-hover align-middle">
+        <table class="table table-hover align-middle tabela-dados">
             <thead>
                 <tr>
                     <th scope="col">Nome</th>
                     <th scope="col">Situação</th>
                     <th scope="col" class="text-end">AC N2</th>
-                    <th scope="col" class="text-end">Ações</th>
+                    <th scope="col" class="text-end"><span class="visually-hidden">Ações</span></th>
                 </tr>
             </thead>
             <tbody>
@@ -63,7 +68,7 @@ $query = array_filter(['busca' => $busca, 'situacao' => $situacao?->value]);
                         </td>
                         <td><?= $this->partial('icp/partial/situacao', ['situacao' => $ac->getSituacao()]) ?></td>
                         <td class="text-end"><?= $ac->getAcN2s()->count() ?></td>
-                        <td class="text-end text-nowrap">
+                        <td class="text-end acoes">
                             <a class="btn btn-sm btn-outline-secondary" href="<?= $this->url('ac/view', ['id' => $ac->getId()]) ?>">Visualizar</a>
                             <a class="btn btn-sm btn-outline-primary" href="<?= $this->url('ac/edit', ['id' => $ac->getId()]) ?>">Editar</a>
                             <?= $this->partial('icp/partial/botao-excluir', [

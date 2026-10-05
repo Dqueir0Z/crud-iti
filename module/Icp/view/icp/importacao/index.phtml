@@ -10,11 +10,17 @@ $this->headTitle('Importar structure.json');
 $form->setAttribute('action', $this->url('importacao'));
 $form->prepare();
 ?>
-<h1 class="h3 mb-3">Importar structure.json</h1>
+<div class="page-header">
+    <div>
+        <span class="sobretitulo">Dados do ITI</span>
+        <h1>Importar structure.json</h1>
+        <p class="subtitulo">Carregue ou atualize AC, AC N2 e AR a partir do arquivo publicado pelo ITI.</p>
+    </div>
+</div>
 
 <div class="row g-4">
     <div class="col-lg-5">
-        <div class="card shadow-sm">
+        <div class="card">
             <div class="card-body">
                 <p class="small text-body-secondary">
                     Envie o arquivo no formato publicado pelo ITI. A importação pode ser repetida:
@@ -91,7 +97,7 @@ $form->prepare();
                 </div>
             </div>
         <?php else : ?>
-            <div class="card bg-body-tertiary border-0">
+            <div class="card bg-transparent shadow-none">
                 <div class="card-body small">
                     <h2 class="h6">Como o arquivo é interpretado</h2>
                     <ul class="mb-0">

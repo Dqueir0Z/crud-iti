@@ -19,12 +19,16 @@ foreach ($acN2s as $acN2) {
     $grupos[$acN2->getAc()->getNome()][] = $acN2;
 }
 ?>
-<div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
-    <h1 class="h3 mb-0">Autoridades de Registro</h1>
+<div class="page-header">
+    <div>
+        <span class="sobretitulo">Cadastro</span>
+        <h1>Autoridades de Registro</h1>
+        <p class="subtitulo">Cada AR pode estar vinculada a uma ou mais AC de 2º nível.</p>
+    </div>
     <a class="btn btn-primary" href="<?= $this->url('ar/create') ?>">Cadastrar AR</a>
 </div>
 
-<form method="get" action="<?= $this->url('ar') ?>" class="row g-2 mb-3" role="search">
+<form method="get" action="<?= $this->url('ar') ?>" class="row g-2 filtros" role="search">
     <div class="col-md-4">
         <label for="busca" class="visually-hidden">Buscar por nome</label>
         <input type="search" id="busca" name="busca" class="form-control" placeholder="Buscar por nome…"
@@ -61,18 +65,19 @@ foreach ($acN2s as $acN2) {
 </form>
 
 <?php if ($ars->getTotalItemCount() === 0) : ?>
-    <div class="alert alert-light border">
-        <?= $query !== [] ? 'Nenhuma AR encontrada com esses filtros.' : 'Nenhuma Autoridade de Registro cadastrada.' ?>
+    <div class="estado-vazio">
+        <strong><?= $query !== [] ? 'Nenhuma AR encontrada com esses filtros.' : 'Nenhuma Autoridade de Registro cadastrada.' ?></strong>
+        <?= $query !== [] ? 'Ajuste ou limpe os filtros.' : 'Cadastre o primeiro registro ou importe o structure.json do ITI.' ?>
     </div>
 <?php else : ?>
     <div class="table-responsive">
-        <table class="table table-hover align-middle">
+        <table class="table table-hover align-middle tabela-dados">
             <thead>
                 <tr>
                     <th scope="col">Nome</th>
-                    <th scope="col">AC N2 vinculadas</th>
+                    <th scope="col" class="d-none d-md-table-cell">AC N2 vinculadas</th>
                     <th scope="col">Situação</th>
-                    <th scope="col" class="text-end">Ações</th>
+                    <th scope="col" class="text-end"><span class="visually-hidden">Ações</span></th>
                 </tr>
             </thead>
             <tbody>
@@ -86,7 +91,7 @@ foreach ($acN2s as $acN2) {
                         <td>
                             <a href="<?= $this->url('ar/view', ['id' => $ar->getId()]) ?>"><?= $this->escapeHtml($ar->getNome()) ?></a>
                         </td>
-                        <td class="small">
+                        <td class="small d-none d-md-table-cell">
                             <?= implode(', ', array_map(
                                 fn ($acN2): string => '<a class="link-secondary" href="' . $this->url('ac-n2/view', ['id' => $acN2->getId()]) . '">'
                                     . $this->escapeHtml($acN2->getNome()) . '</a>',
@@ -97,7 +102,7 @@ foreach ($acN2s as $acN2) {
                             <?php endif; ?>
                         </td>
                         <td><?= $this->partial('icp/partial/situacao', ['situacao' => $ar->getSituacao()]) ?></td>
-                        <td class="text-end text-nowrap">
+                        <td class="text-end acoes">
                             <a class="btn btn-sm btn-outline-secondary" href="<?= $this->url('ar/view', ['id' => $ar->getId()]) ?>">Visualizar</a>
                             <a class="btn btn-sm btn-outline-primary" href="<?= $this->url('ar/edit', ['id' => $ar->getId()]) ?>">Editar</a>
                             <?= $this->partial('icp/partial/botao-excluir', [

@@ -3,5 +3,7 @@
  * @var Laminas\View\Renderer\PhpRenderer $this
  * @var Icp\Enum\Situacao $situacao
  */
+
+$modificador = $situacao === Icp\Enum\Situacao::Credenciado ? 'credenciado' : 'em-credenciamento';
 ?>
-<span class="badge <?= $situacao->classeBadge() ?>"><?= $this->escapeHtml($situacao->rotulo()) ?></span>
+<span class="situacao situacao--<?= $modificador ?>"><?= $this->escapeHtml($situacao->rotulo()) ?></span>

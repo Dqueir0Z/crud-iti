@@ -16,10 +16,11 @@ $totalAcN2 = array_sum(array_map('count', $acN2sPorAc));
 
 $classeSituacao = static fn (Situacao $s): string => $s === Situacao::EmCredenciamento ? ' em-credenciamento' : '';
 ?>
-<div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+<div class="page-header">
     <div>
-        <h1 class="h3 mb-0">Estrutura ICP-Brasil</h1>
-        <p class="text-body-secondary mb-0 small">
+        <span class="sobretitulo">Visão hierárquica</span>
+        <h1>Estrutura ICP-Brasil</h1>
+        <p class="subtitulo numero">
             <?= count($acs) ?> AC · <?= $totalAcN2 ?> AC N2 · <?= number_format($totalAr, 0, ',', '.') ?> AR
         </p>
     </div>
@@ -30,8 +31,8 @@ $classeSituacao = static fn (Situacao $s): string => $s === Situacao::EmCredenci
 </div>
 
 <?php if ($acs === []) : ?>
-    <div class="alert alert-info">
-        A estrutura está vazia. <a href="<?= $this->url('importacao') ?>" class="alert-link">Importe o structure.json</a>
+    <div class="estado-vazio">
+        <strong>A estrutura está vazia.</strong> <a href="<?= $this->url('importacao') ?>" class="alert-link">Importe o structure.json</a>
         ou cadastre as entidades manualmente.
     </div>
 <?php else : ?>

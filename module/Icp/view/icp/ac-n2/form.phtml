@@ -10,11 +10,16 @@ $this->headTitle($titulo);
 $form->prepare();
 $voltar = $acN2 === null ? $this->url('ac-n2') : $this->url('ac-n2/view', ['id' => $acN2->getId()]);
 ?>
-<h1 class="h3 mb-3"><?= $this->escapeHtml($titulo) ?></h1>
+<div class="page-header">
+    <div>
+        <span class="sobretitulo">Cadastro</span>
+        <h1><?= $this->escapeHtml($titulo) ?></h1>
+    </div>
+</div>
 
 <?= $this->partial('icp/partial/erro-csrf', ['form' => $form]) ?>
 
-<div class="card shadow-sm">
+<div class="card form-cartao">
     <div class="card-body">
         <?= $this->form()->openTag($form) ?>
             <?= $this->partial('partial/campo', ['elemento' => $form->get('nome')]) ?>

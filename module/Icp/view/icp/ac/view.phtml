@@ -15,10 +15,10 @@ $acN2s = $ac->getAcN2s();
     </ol>
 </nav>
 
-<div class="d-flex flex-wrap justify-content-between align-items-start gap-2 mb-3">
+<div class="page-header">
     <div>
-        <span class="badge text-bg-light border mb-1">AC 1º nível</span>
-        <h1 class="h3 mb-0"><?= $this->escapeHtml($ac->getNome()) ?></h1>
+        <span class="nivel">AC 1º nível</span>
+        <h1><?= $this->escapeHtml($ac->getNome()) ?></h1>
     </div>
     <div class="d-flex flex-wrap gap-2">
         <?= $this->botaoQrCode('ac', (int) $ac->getId(), $ac->getNome(), 'btn btn-outline-dark') ?>
@@ -32,13 +32,13 @@ $acN2s = $ac->getAcN2s();
     </div>
 </div>
 
-<dl class="row mb-4">
-    <dt class="col-sm-3">Situação</dt>
-    <dd class="col-sm-9"><?= $this->partial('icp/partial/situacao', ['situacao' => $ac->getSituacao()]) ?></dd>
-    <dt class="col-sm-3">ID no ITI</dt>
-    <dd class="col-sm-9"><?= $ac->getItiId() ?? '<span class="text-body-secondary">cadastro manual</span>' ?></dd>
-    <dt class="col-sm-3">Atualizado em</dt>
-    <dd class="col-sm-9"><?= $ac->getUpdatedAt()->format('d/m/Y H:i') ?></dd>
+<dl class="ficha">
+    <dt>Situação</dt>
+    <dd><?= $this->partial('icp/partial/situacao', ['situacao' => $ac->getSituacao()]) ?></dd>
+    <dt>ID no ITI</dt>
+    <dd><?= $ac->getItiId() ?? '<span class="text-body-secondary">cadastro manual</span>' ?></dd>
+    <dt>Atualizado em</dt>
+    <dd><?= $ac->getUpdatedAt()->format('d/m/Y H:i') ?></dd>
 </dl>
 
 <div class="d-flex justify-content-between align-items-center mb-2">

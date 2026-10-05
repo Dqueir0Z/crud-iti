@@ -10,28 +10,40 @@ $this->headTitle('Entrar');
 $form->setAttribute('action', $this->url('login', [], ['query' => ['redirect' => $destino]]));
 $form->prepare();
 ?>
-<div class="row justify-content-center">
-    <div class="col-sm-10 col-md-6 col-lg-4">
-        <div class="card shadow-sm mt-4">
-            <div class="card-body p-4">
-                <h1 class="h4 mb-1">Entrar</h1>
-                <p class="text-body-secondary small mb-4">Acesso restrito à gestão da estrutura ICP-Brasil.</p>
-
-                <?php if ($erro !== null) : ?>
-                    <div class="alert alert-danger py-2" role="alert"><?= $this->escapeHtml($erro) ?></div>
-                <?php endif; ?>
-
-                <?php foreach ($form->get('csrf')->getMessages() as $mensagem) : ?>
-                    <div class="alert alert-warning py-2" role="alert"><?= $this->escapeHtml($mensagem) ?></div>
-                <?php endforeach; ?>
-
-                <?= $this->form()->openTag($form) ?>
-                    <?= $this->partial('partial/campo', ['elemento' => $form->get('email')]) ?>
-                    <?= $this->partial('partial/campo', ['elemento' => $form->get('senha')]) ?>
-                    <?= $this->formHidden($form->get('csrf')) ?>
-                    <button type="submit" class="btn btn-primary w-100">Entrar</button>
-                <?= $this->form()->closeTag() ?>
-            </div>
+<div class="login">
+    <section class="login-apresentacao" aria-label="Sobre o sistema">
+        <div>
+            <h2>Estrutura da ICP-Brasil</h2>
+            <p>
+                Cadastro das Autoridades Certificadoras e de Registro, com importação
+                direta do arquivo publicado pelo ITI.
+            </p>
         </div>
-    </div>
+        <ul class="login-niveis">
+            <li>AC Raiz</li>
+            <li>AC de 1º nível</li>
+            <li>AC de 2º nível</li>
+            <li>Autoridades de Registro</li>
+        </ul>
+    </section>
+
+    <section class="login-form">
+        <h1>Entrar</h1>
+        <p class="text-body-secondary mb-4">Use o e-mail e a senha cadastrados para você.</p>
+
+        <?php if ($erro !== null) : ?>
+            <div class="alert alert-danger py-2" role="alert"><?= $this->escapeHtml($erro) ?></div>
+        <?php endif; ?>
+
+        <?php foreach ($form->get('csrf')->getMessages() as $mensagem) : ?>
+            <div class="alert alert-warning py-2" role="alert"><?= $this->escapeHtml($mensagem) ?></div>
+        <?php endforeach; ?>
+
+        <?= $this->form()->openTag($form) ?>
+            <?= $this->partial('partial/campo', ['elemento' => $form->get('email')]) ?>
+            <?= $this->partial('partial/campo', ['elemento' => $form->get('senha')]) ?>
+            <?= $this->formHidden($form->get('csrf')) ?>
+            <button type="submit" class="btn btn-primary w-100 mt-2">Entrar</button>
+        <?= $this->form()->closeTag() ?>
+    </section>
 </div>
