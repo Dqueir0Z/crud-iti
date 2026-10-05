@@ -1,0 +1,51 @@
+<h1>Autoridades Certificadoras</h1>
+
+<p>
+    <a href="<?= $this->url('ac/create') ?>">
+    Cadastrar nova AC
+</a>
+</p>
+
+<?php if (empty($acs)): ?>
+
+    <p>Nenhuma Autoridade Certificadora cadastrada.</p>
+
+<?php else: ?>
+
+    <table>
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>Nome</th>
+                <th>Ações</th>
+            </tr>
+        </thead>
+
+        <tbody>
+            <?php foreach ($acs as $ac): ?>
+                <tr>
+                    <td><?= $this->escapeHtml($ac->getId()) ?></td>
+
+                    <td>
+                        <?= $this->escapeHtml($ac->getNome()) ?>
+                    </td>
+
+                    <td>
+                        Visualizar |
+
+                       <a href="<?= $this->url(
+   			 'ac/edit',
+   			 ['id' => $ac->getId()]
+			) ?>">
+			    Editar
+			</a>
+
+                      | Excluir |
+                        Gerar QRCode
+                    </td>
+                </tr>
+            <?php endforeach; ?>
+        </tbody>
+    </table>
+
+<?php endif; ?>

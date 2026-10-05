@@ -1,0 +1,30 @@
+<h1>Cadastrar Autoridade Certificadora</h1>
+
+<form method="post">
+
+    <div class="mb-3">
+        <label for="nome" class="form-label">
+            Nome da AC
+        </label>
+
+        <input
+            type="text"
+            name="nome"
+            id="nome"
+            class="form-control"
+            required
+        >
+    </div>
+
+    <button type="submit" class="btn btn-primary">
+        Salvar
+    </button>
+
+    <a
+        href="<?= $this->url('ac') ?>"
+        class="btn btn-secondary"
+    >
+        Cancelar
+    </a>
+
+</form>

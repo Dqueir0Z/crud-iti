@@ -1,0 +1,50 @@
+<?php if ($ac === null): ?>
+
+    <h1>AC não encontrada</h1>
+
+    <p>
+        A Autoridade Certificadora solicitada não existe.
+    </p>
+
+    <a
+        href="<?= $this->url('ac') ?>"
+        class="btn btn-secondary"
+    >
+        Voltar
+    </a>
+
+<?php else: ?>
+
+    <h1>Editar Autoridade Certificadora</h1>
+
+    <form method="post">
+
+        <div class="mb-3">
+            <label for="nome" class="form-label">
+                Nome da AC
+            </label>
+
+            <input
+                type="text"
+                name="nome"
+                id="nome"
+                class="form-control"
+                value="<?= $this->escapeHtmlAttr($ac->getNome()) ?>"
+                required
+            >
+        </div>
+
+        <button type="submit" class="btn btn-primary">
+            Salvar alterações
+        </button>
+
+        <a
+            href="<?= $this->url('ac') ?>"
+            class="btn btn-secondary"
+        >
+            Cancelar
+        </a>
+
+    </form>
+
+<?php endif; ?>
