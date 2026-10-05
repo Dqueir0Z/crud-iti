@@ -58,10 +58,10 @@ não cobre. Ver também os avisos exibidos ao final de cada importação.
 - **Exclusão:** bloqueada com mensagem quando há dependentes (AC com AC N2, AC N2 com AR).
   As FKs `ON DELETE RESTRICT` garantem a regra também no banco, inclusive se uma AR for
   vinculada entre a checagem e a exclusão (o Doctrine não apaga os vínculos por conta própria).
-- **QR Code:** codifica a URL absoluta da página daquele item dentro do próprio sistema
-  (ex.: `http://localhost:8080/ac/view/2`). O PDF do desafio termina em "com o link:"
-  sem informar o destino; esta é a interpretação adotada enquanto o avaliador não confirma.
-  Trocar o alvo é uma alteração em `LinkQrCode`.
+- **QR Code:** ao ser lido, leva para a página daquela entidade em específico
+  (ex.: `http://localhost:8080/ac/view/2`), **conforme confirmado pelo avaliador** (o PDF
+  terminava em "com o link:" sem informar o destino). Quem lê sem estar logado passa pelo login e
+  é levado em seguida à página do item. Para ler pelo celular, veja "Ler o QR Code pelo celular".
 
 > **Atenção à URL do JSON:** `https://estrutura.iti.gov.br/assets/structure.json` devolve a
 > página HTML do site (aplicação Angular). O arquivo de dados está em
@@ -131,6 +131,19 @@ Para avaliação local, crie o usuário de demonstração com a senha `Demo@ITI2
 ```bash
 CRUD_ITI_SENHA='Demo@ITI2026' composer criar-usuario -- demo@crud-iti.test "Usuário Demonstração"
 ```
+
+### Ler o QR Code pelo celular
+
+O QR codifica o endereço pelo qual o sistema foi aberto. Aberto como `http://localhost:8080`, o
+link aponta para `localhost`, que o celular não alcança. Para testar com o celular na mesma rede:
+
+1. Suba o servidor escutando na rede (`composer serve` já usa `0.0.0.0:8080`).
+2. Abra o sistema no computador pelo IP da máquina na rede (ex.: `http://192.168.0.10:8080`):
+   o QR passa a codificar esse endereço. Outra opção é fixar o endereço em
+   `config/autoload/local.php`: `'icp' => ['qrcode' => ['base_url' => 'http://192.168.0.10:8080']]`.
+3. **No WSL2**, a rede padrão (NAT) não aceita conexões vindas de outros aparelhos. Use o modo
+   espelhado (`networkingMode=mirrored` na seção `[wsl2]` do `%UserProfile%\.wslconfig`, seguido de
+   `wsl --shutdown`) e libere a porta 8080 no firewall do Windows.
 
 ### Desempenho no WSL
 
