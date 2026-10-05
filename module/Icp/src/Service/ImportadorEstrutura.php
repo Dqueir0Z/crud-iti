@@ -25,7 +25,13 @@ use Icp\Repository\ArRepository;
  */
 final class ImportadorEstrutura
 {
-    private const TRAVA = 'crud_iti_importacao';
+    /**
+     * Trava nomeada do MySQL compartilhada com bin/preparar-banco.php: upload e
+     * preparação/restauração do banco nunca gravam AC/AC N2/AR ao mesmo tempo.
+     * GET_LOCK é reentrante na mesma conexão, então a preparação pode segurá-la e
+     * chamar a importação.
+     */
+    public const TRAVA = 'crud_iti_dados';
 
     public function __construct(
         private EntityManagerInterface $entityManager,

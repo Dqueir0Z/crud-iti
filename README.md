@@ -183,16 +183,17 @@ Em *Environment*:
 | `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USER`, `DB_PASSWORD` | dados do Aiven |
 | `DB_SSL_CA_ARQUIVO` | `/etc/secrets/ca.pem` — antes, em *Secret Files*, crie o arquivo `ca.pem` com o conteúdo do *CA certificate* do Aiven (alternativa: colar o texto do certificado na variável `DB_SSL_CA`) |
 | `DEMO_EMAIL`, `DEMO_SENHA` | usuário de demonstração (ex.: `demo@crud-iti.test` / `Demo@ITI2026`) |
-| `RESTAURAR_DADOS` | opcional: um valor novo (ex.: a data) apaga AC/AC N2/AR e reimporta o arquivo do ITI no próximo deploy |
+| `RESTAURAR_DADOS` | opcional: um valor novo (ex.: a data) apaga AC/AC N2/AR e reimporta o arquivo do ITI no próximo deploy, numa única transação (se a importação falhar, nada é apagado). Faça quando ninguém estiver usando o site |
 
 `PORT` e `RENDER_EXTERNAL_URL` são definidas pelo próprio Render; a segunda faz o QR Code apontar
 para o endereço público (`https://…onrender.com/ar/view/15`), que abre no celular.
 
-**O que acontece ao subir** (`bin/iniciar-container.sh` → `bin/preparar-banco.php`): banco vazio
-recebe `data/sql/schema.sql`; banco antigo recebe a atualização da situação por vínculo; o
-`structure.json` é importado uma única vez; o usuário demo é criado (trocar `DEMO_SENHA` e fazer
-novo deploy troca a senha). Cada etapa fica registrada na tabela `crud_iti_instalacao`, então
-reinícios não repetem nada. Sem o certificado da CA, o container se recusa a subir: a conexão com
+**O que acontece ao subir** (`bin/iniciar-container.sh` → `bin/preparar-banco.php`): as tabelas e
+FKs de `data/sql/schema.sql` que faltarem são criadas; banco antigo recebe a situação por vínculo;
+o `structure.json` é importado uma única vez; o usuário demo é criado (trocar `DEMO_SENHA` e fazer
+novo deploy troca a senha). Etapas pendentes ficam registradas na tabela `crud_iti_instalacao`:
+reinícios não repetem o que já foi feito, e um boot interrompido no meio é retomado no seguinte.
+Se a preparação falhar, o container não sobe e o Render mantém a versão anterior no ar. Sem o certificado da CA, o container se recusa a subir: a conexão com
 o banco publicado é sempre por TLS verificado.
 
 **Limites do plano gratuito:** o Render "dorme" após 15 min sem acesso (o próximo acesso leva de

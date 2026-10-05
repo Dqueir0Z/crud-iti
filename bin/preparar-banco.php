@@ -1,20 +1,24 @@
 <?php
 
 /**
- * Prepara o banco quando o container sobe (deploy). Pode rodar a cada boot:
- * cada etapa é aplicada uma única vez e fica registrada em crud_iti_instalacao.
+ * Prepara o banco quando o container sobe (deploy). Pode rodar a cada boot e
+ * retoma o que tiver ficado pela metade se um boot anterior foi interrompido:
  *
- *   schema                 banco vazio recebe data/sql/schema.sql
- *   situacao-por-vinculo   banco anterior recebe a atualização e é reimportado
- *   dados-iti              structure.json importado uma vez
- *   restauracao:<valor>    com RESTAURAR_DADOS=<valor>, AC/AC N2/AR são apagadas
- *                          e reimportadas (uma vez por valor; troque o valor
- *                          para restaurar de novo a demonstração)
+ * 1. Estrutura: cada tabela e cada FK de data/sql/schema.sql é criada só se
+ *    estiver faltando (o estado vem do próprio banco, não de um marcador).
+ * 2. Banco anterior à situação por vínculo (ar_ac_n2 sem a coluna situacao):
+ *    cria a coluna e copia a situação da AR para os vínculos; a cópia e a
+ *    pendência de reimportação são gravadas na mesma transação.
+ * 3. Dados do ITI: importados se nunca foram ("dados-iti") ou se há reimportação
+ *    pendente; a pendência só sai depois da importação concluída.
+ * 4. RESTAURAR_DADOS=<valor>: apaga AC/AC N2/AR, reimporta e registra
+ *    "restauracao:<valor>" numa única transação: ou tudo, ou nada. Troque o
+ *    valor para restaurar de novo.
+ * 5. Usuário de demonstração (DEMO_EMAIL / DEMO_SENHA): criado ou com a senha
+ *    atualizada.
  *
- * Também garante o usuário de demonstração quando DEMO_EMAIL e DEMO_SENHA
- * estão definidos (trocar DEMO_SENHA e reiniciar troca a senha).
- *
- * Uma trava nomeada do MySQL impede duas preparações simultâneas.
+ * Usa a mesma trava nomeada da importação pela tela (ImportadorEstrutura::TRAVA):
+ * preparação e upload nunca gravam AC/AC N2/AR ao mesmo tempo.
  */
 
 declare(strict_types=1);
@@ -27,21 +31,23 @@ use Icp\Service\ImportadorEstrutura;
 chdir(dirname(__DIR__));
 require 'vendor/autoload.php';
 
-const TRAVA           = 'crud_iti_preparacao';
-const ARQUIVO_ITI     = 'data/exemplo/structure.json';
 const TENTATIVAS      = 10;
 const ESPERA_SEGUNDOS = 3;
+const ESPERA_TRAVA    = 120;
 
 /** @var Psr\Container\ContainerInterface $container */
 $container = require 'config/container.php';
 /** @var EntityManagerInterface $entityManager */
 $entityManager = $container->get('doctrine.entitymanager.orm_default');
-$conexao       = $entityManager->getConnection();
+/** @var ImportadorEstrutura $importador */
+$importador = $container->get(ImportadorEstrutura::class);
+$conexao    = $entityManager->getConnection();
+$arquivoIti = getenv('ARQUIVO_ESTRUTURA') ?: 'data/exemplo/structure.json';
 
 conectar($conexao);
 
-if ((int) $conexao->fetchOne('SELECT GET_LOCK(?, 60)', [TRAVA]) !== 1) {
-    falhar('Outra preparação do banco está em andamento.');
+if ((int) $conexao->fetchOne('SELECT GET_LOCK(?, ?)', [ImportadorEstrutura::TRAVA, ESPERA_TRAVA]) !== 1) {
+    falhar('Outra preparação ou importação está em andamento.');
 }
 
 try {
@@ -50,59 +56,59 @@ try {
         . 'etapa VARCHAR(100) NOT NULL PRIMARY KEY, aplicada_em DATETIME NOT NULL'
         . ') DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci ENGINE = InnoDB'
     );
-    $aplicadas = array_flip($conexao->fetchFirstColumn('SELECT etapa FROM crud_iti_instalacao'));
-    $reimportar = false;
 
-    $temTabelas = $conexao->fetchOne("SHOW TABLES LIKE 'ar'") !== false;
+    // Banco anterior à situação por vínculo: a tabela existe sem a coluna. O
+    // marcador "pendente:copiar-situacao" é gravado antes do ALTER (DDL não entra
+    // em transação) e só sai junto com a cópia, então um boot interrompido no meio
+    // refaz a cópia no próximo.
+    if (tabelaExiste($conexao, 'ar_ac_n2') && ! colunaExiste($conexao, 'ar_ac_n2', 'situacao')) {
+        marcar($conexao, 'pendente:copiar-situacao');
+        $conexao->executeStatement('ALTER TABLE ar_ac_n2 ADD situacao SMALLINT DEFAULT 4002 NOT NULL');
+    }
 
-    if (! $temTabelas) {
-        executarArquivoSql($conexao, 'data/sql/schema.sql');
-        registrar($conexao, 'schema');
-        registrar($conexao, 'situacao-por-vinculo');
-        informar('Tabelas criadas.');
-    } else {
-        $temSituacao = $conexao->fetchOne("SHOW COLUMNS FROM ar_ac_n2 LIKE 'situacao'") !== false;
-        if (! $temSituacao) {
-            executarArquivoSql($conexao, 'data/sql/atualizacao-situacao-por-vinculo.sql');
-            $reimportar = true;
-            informar('Banco atualizado para a situação por vínculo.');
-        }
-        foreach (['schema', 'situacao-por-vinculo'] as $etapa) {
-            if (! isset($aplicadas[$etapa])) {
-                registrar($conexao, $etapa);
-            }
-        }
+    completarEstrutura($conexao, 'data/sql/schema.sql');
+
+    if (marcado($conexao, 'pendente:copiar-situacao')) {
+        $conexao->transactional(static function (Connection $c): void {
+            $c->executeStatement('UPDATE ar_ac_n2 v JOIN ar r ON r.id = v.ar_id SET v.situacao = r.situacao');
+            desmarcar($c, 'pendente:copiar-situacao');
+            marcar($c, 'pendente:reimportar');
+        });
+        informar('Banco atualizado para a situação por vínculo; reimportação agendada.');
     }
 
     $restauracao = getenv('RESTAURAR_DADOS');
-    if (is_string($restauracao) && $restauracao !== '' && ! isset($aplicadas['restauracao:' . $restauracao])) {
-        $conexao->transactional(static function (Connection $c): void {
+    if (is_string($restauracao) && $restauracao !== '' && ! marcado($conexao, 'restauracao:' . $restauracao)) {
+        $json = lerArquivo($arquivoIti);
+        $conexao->transactional(static function (Connection $c) use ($importador, $json, $restauracao): void {
             foreach (['ar_ac_n2', 'ar', 'ac_n2', 'ac'] as $tabela) {
                 $c->executeStatement('DELETE FROM ' . $tabela);
             }
+            $importador->importarJson($json);
+            marcar($c, 'restauracao:' . $restauracao);
+            marcar($c, 'dados-iti');
+            desmarcar($c, 'pendente:reimportar');
         });
-        $reimportar = true;
-        registrar($conexao, 'restauracao:' . $restauracao);
-        informar('Dados de AC, AC N2 e AR apagados para restauração.');
+        informar('Dados de AC, AC N2 e AR restaurados a partir do structure.json.');
     }
 
-    if ($reimportar || ! isset($aplicadas['dados-iti'])) {
-        /** @var ImportadorEstrutura $importador */
-        $importador = $container->get(ImportadorEstrutura::class);
-        $resultado  = $importador->importarJson((string) file_get_contents(ARQUIVO_ITI));
-        if (! isset($aplicadas['dados-iti'])) {
-            registrar($conexao, 'dados-iti');
-        }
+    if (! marcado($conexao, 'dados-iti') || marcado($conexao, 'pendente:reimportar')) {
+        $resultado = $importador->importarJson(lerArquivo($arquivoIti));
+        $conexao->transactional(static function (Connection $c): void {
+            marcar($c, 'dados-iti');
+            desmarcar($c, 'pendente:reimportar');
+        });
         informar(sprintf(
-            'structure.json importado: %d AR criadas, %d vínculos criados.',
+            'structure.json importado: %d AR criadas, %d vínculos criados, %d vínculos atualizados.',
             $resultado->totais['AR']['criados'],
-            $resultado->vinculosCriados
+            $resultado->vinculosCriados,
+            $resultado->vinculosAtualizados
         ));
     }
 
     garantirUsuarioDemo($entityManager);
 } finally {
-    $conexao->fetchOne('SELECT RELEASE_LOCK(?)', [TRAVA]);
+    $conexao->fetchOne('SELECT RELEASE_LOCK(?)', [ImportadorEstrutura::TRAVA]);
 }
 
 informar('Banco pronto.');
@@ -123,21 +129,90 @@ function conectar(Connection $conexao): void
     falhar('Não foi possível conectar ao banco.');
 }
 
-function executarArquivoSql(Connection $conexao, string $arquivo): void
+/**
+ * Executa os comandos do schema.sql que ainda faltam: CREATE TABLE de tabelas
+ * inexistentes e ADD CONSTRAINT de FKs inexistentes. DDL no MySQL não volta
+ * atrás numa transação, então a retomada é por verificação de cada objeto.
+ */
+function completarEstrutura(Connection $conexao, string $arquivo): void
 {
-    $sql = (string) preg_replace('/^--.*$/m', '', (string) file_get_contents($arquivo));
-
-    foreach (array_filter(array_map('trim', explode(';', $sql))) as $comando) {
-        $conexao->executeStatement($comando);
+    foreach (comandosSql($arquivo) as $comando) {
+        if (preg_match('/^CREATE TABLE (\w+)/i', $comando, $m) === 1) {
+            if (! tabelaExiste($conexao, $m[1])) {
+                $conexao->executeStatement($comando);
+                informar('Tabela criada: ' . $m[1]);
+            }
+        } elseif (preg_match('/^ALTER TABLE (\w+) ADD CONSTRAINT (\w+)/i', $comando, $m) === 1) {
+            if (! restricaoExiste($conexao, $m[1], $m[2])) {
+                $conexao->executeStatement($comando);
+                informar('Chave estrangeira criada: ' . $m[2]);
+            }
+        } else {
+            falhar('Comando inesperado em ' . $arquivo . ': ' . substr($comando, 0, 60));
+        }
     }
 }
 
-function registrar(Connection $conexao, string $etapa): void
+/** @return list<string> */
+function comandosSql(string $arquivo): array
+{
+    $sql = (string) preg_replace('/^--.*$/m', '', lerArquivo($arquivo));
+
+    return array_values(array_filter(array_map('trim', explode(';', $sql))));
+}
+
+function tabelaExiste(Connection $conexao, string $tabela): bool
+{
+    return (int) $conexao->fetchOne(
+        'SELECT COUNT(*) FROM information_schema.TABLES WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ?',
+        [$tabela]
+    ) > 0;
+}
+
+function colunaExiste(Connection $conexao, string $tabela, string $coluna): bool
+{
+    return (int) $conexao->fetchOne(
+        'SELECT COUNT(*) FROM information_schema.COLUMNS
+         WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ? AND COLUMN_NAME = ?',
+        [$tabela, $coluna]
+    ) > 0;
+}
+
+function restricaoExiste(Connection $conexao, string $tabela, string $nome): bool
+{
+    return (int) $conexao->fetchOne(
+        'SELECT COUNT(*) FROM information_schema.TABLE_CONSTRAINTS
+         WHERE CONSTRAINT_SCHEMA = DATABASE() AND TABLE_NAME = ? AND CONSTRAINT_NAME = ?',
+        [$tabela, $nome]
+    ) > 0;
+}
+
+function marcado(Connection $conexao, string $etapa): bool
+{
+    return $conexao->fetchOne('SELECT 1 FROM crud_iti_instalacao WHERE etapa = ?', [$etapa]) !== false;
+}
+
+function marcar(Connection $conexao, string $etapa): void
 {
     $conexao->executeStatement(
-        'INSERT INTO crud_iti_instalacao (etapa, aplicada_em) VALUES (?, NOW())',
+        'INSERT IGNORE INTO crud_iti_instalacao (etapa, aplicada_em) VALUES (?, NOW())',
         [$etapa]
     );
+}
+
+function desmarcar(Connection $conexao, string $etapa): void
+{
+    $conexao->executeStatement('DELETE FROM crud_iti_instalacao WHERE etapa = ?', [$etapa]);
+}
+
+function lerArquivo(string $arquivo): string
+{
+    $conteudo = file_get_contents($arquivo);
+    if ($conteudo === false) {
+        falhar('Arquivo não encontrado: ' . $arquivo);
+    }
+
+    return $conteudo;
 }
 
 function garantirUsuarioDemo(EntityManagerInterface $entityManager): void
