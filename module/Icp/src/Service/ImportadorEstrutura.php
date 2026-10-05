@@ -9,6 +9,7 @@ use Icp\Entity\Ac;
 use Icp\Entity\AcN2;
 use Icp\Entity\Ar;
 use Icp\Enum\Situacao;
+use Icp\Exception\ImportacaoEmAndamentoException;
 use Icp\Repository\AcN2Repository;
 use Icp\Repository\AcRepository;
 use Icp\Repository\ArRepository;
@@ -24,6 +25,8 @@ use Icp\Repository\ArRepository;
  */
 final class ImportadorEstrutura
 {
+    private const TRAVA = 'crud_iti_importacao';
+
     public function __construct(
         private EntityManagerInterface $entityManager,
         private LeitorEstrutura $leitor
@@ -36,6 +39,24 @@ final class ImportadorEstrutura
     }
 
     public function importar(EstruturaImportada $estrutura): ResultadoImportacao
+    {
+        // Duas importações ao mesmo tempo (ex.: no site publicado) disputariam os
+        // mesmos iti_id; a trava nomeada do MySQL deixa só uma gravar por vez.
+        $conexao = $this->entityManager->getConnection();
+        if ((int) $conexao->fetchOne('SELECT GET_LOCK(?, 0)', [self::TRAVA]) !== 1) {
+            throw new ImportacaoEmAndamentoException(
+                'Outra importação está em andamento. Aguarde alguns segundos e tente de novo.'
+            );
+        }
+
+        try {
+            return $this->gravar($estrutura);
+        } finally {
+            $conexao->fetchOne('SELECT RELEASE_LOCK(?)', [self::TRAVA]);
+        }
+    }
+
+    private function gravar(EstruturaImportada $estrutura): ResultadoImportacao
     {
         return $this->entityManager->wrapInTransaction(function () use ($estrutura): ResultadoImportacao {
             $resultado = new ResultadoImportacao($estrutura->avisos);

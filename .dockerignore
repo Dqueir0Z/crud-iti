@@ -1,0 +1,17 @@
+# Fora da imagem: dependências (instaladas no build), configuração e dados locais.
+.git
+.github
+.env*
+vendor
+config/autoload/local.php
+config/autoload/development.local.php
+config/development.config.php
+data/cache/*
+!data/cache/.gitkeep
+data/DoctrineORMModule
+docs/evidencias
+_revisao-codex
+.phpunit.cache
+.phpcs-cache
+.psalm-cache
+phpunit.xml

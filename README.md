@@ -7,6 +7,11 @@ Sistema web para gerenciar a estrutura de Autoridades Certificadoras da ICP-Bras
 
 Desafio técnico — Desenvolvedor PHP.
 
+> **Demonstração online:** _endereço será publicado aqui após o deploy_ — usuário
+> `demo@crud-iti.test`, senha `Demo@ITI2026`. Hospedagem gratuita: o primeiro acesso depois de
+> um tempo parado costuma levar de 30 s a 1 min (o serviço "acorda"). Veja
+> [Publicação gratuita](#publicação-gratuita-render--aiven).
+
 ## Stack
 
 | Item | Versão |
@@ -159,6 +164,49 @@ Medido aqui com o mesmo script, servidor embutido com OPcache e sessão já loga
 | Estrutura (`/estrutura`) | 5,24 s | 0,10 s |
 | Importação (`/importar`) | 5,34 s | 0,02 s |
 | Bootstrap da aplicação (CLI) | 3,49 s | 0,03 s |
+
+## Publicação gratuita (Render + Aiven)
+
+O mesmo código roda num container (`Dockerfile`: PHP 8.3 + Apache, com o Laminas instalado pelo
+Composer no build). O app fica no [Render](https://render.com) (plano gratuito) e o MySQL no
+[Aiven](https://aiven.io/free-mysql-database) (plano gratuito, sem cartão).
+
+**1. Banco (Aiven):** crie um serviço **MySQL** no plano *Free*. Na página do serviço, anote
+*Host*, *Port*, *User* (`avnadmin`), *Password* e *Database* (`defaultdb`) e baixe o *CA certificate*.
+
+**2. App (Render):** *New → Web Service*, conecte este repositório, *Language: Docker*,
+plano *Free*. Não há *start command* (o `Dockerfile` define tudo). *Health Check Path*: `/login`.
+Em *Environment*:
+
+| Variável | Valor |
+|---|---|
+| `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USER`, `DB_PASSWORD` | dados do Aiven |
+| `DB_SSL_CA_ARQUIVO` | `/etc/secrets/ca.pem` — antes, em *Secret Files*, crie o arquivo `ca.pem` com o conteúdo do *CA certificate* do Aiven (alternativa: colar o texto do certificado na variável `DB_SSL_CA`) |
+| `DEMO_EMAIL`, `DEMO_SENHA` | usuário de demonstração (ex.: `demo@crud-iti.test` / `Demo@ITI2026`) |
+| `RESTAURAR_DADOS` | opcional: um valor novo (ex.: a data) apaga AC/AC N2/AR e reimporta o arquivo do ITI no próximo deploy |
+
+`PORT` e `RENDER_EXTERNAL_URL` são definidas pelo próprio Render; a segunda faz o QR Code apontar
+para o endereço público (`https://…onrender.com/ar/view/15`), que abre no celular.
+
+**O que acontece ao subir** (`bin/iniciar-container.sh` → `bin/preparar-banco.php`): banco vazio
+recebe `data/sql/schema.sql`; banco antigo recebe a atualização da situação por vínculo; o
+`structure.json` é importado uma única vez; o usuário demo é criado (trocar `DEMO_SENHA` e fazer
+novo deploy troca a senha). Cada etapa fica registrada na tabela `crud_iti_instalacao`, então
+reinícios não repetem nada. Sem o certificado da CA, o container se recusa a subir: a conexão com
+o banco publicado é sempre por TLS verificado.
+
+**Limites do plano gratuito:** o Render "dorme" após 15 min sem acesso (o próximo acesso leva de
+30 s a 1 min e a sessão se perde, basta entrar de novo); o Aiven desliga o banco depois de um longo
+período sem uso, com aviso por e-mail, e ele é religado no painel. A página não é indexada por
+buscadores (`X-Robots-Tag: noindex`).
+
+**Testar a imagem localmente** (com um MySQL local sem TLS):
+
+```bash
+docker build -t crud-iti .
+docker run --rm -p 8080:8080 -e DB_HOST=host.docker.internal -e DB_NAME=crud_iti \
+  -e DB_USER=crud_iti_user -e DB_PASSWORD=sua-senha -e DB_SSL=desligado crud-iti
+```
 
 ## Testes
 

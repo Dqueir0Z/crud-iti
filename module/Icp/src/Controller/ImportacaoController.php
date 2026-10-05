@@ -6,6 +6,7 @@ namespace Icp\Controller;
 
 use Doctrine\DBAL\Exception as DbalException;
 use Icp\Exception\EstruturaInvalidaException;
+use Icp\Exception\ImportacaoEmAndamentoException;
 use Icp\Form\ImportacaoForm;
 use Icp\Service\ImportadorEstrutura;
 use Laminas\Http\Request;
@@ -46,7 +47,7 @@ final class ImportacaoController extends AbstractActionController
                     // O arquivo oficial gera ~8,5 mil operações; evita estourar o limite padrão.
                     set_time_limit(120);
                     $resultado = $this->importador->importarJson($conteudo === false ? '' : $conteudo);
-                } catch (EstruturaInvalidaException $e) {
+                } catch (EstruturaInvalidaException | ImportacaoEmAndamentoException $e) {
                     $erro = $e->getMessage();
                 } catch (DbalException) {
                     // Rede de segurança: a transação já foi desfeita e nada do arquivo foi gravado.
