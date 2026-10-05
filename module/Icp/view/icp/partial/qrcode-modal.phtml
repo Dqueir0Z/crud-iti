@@ -1,0 +1,28 @@
+<?php
+/**
+ * Modal único do QR Code; preenchido por public/js/app.js a partir dos
+ * atributos data-qrcode-* do botão que o abriu.
+ *
+ * @var Laminas\View\Renderer\PhpRenderer $this
+ */
+?>
+<div class="modal fade" id="modalQrCode" tabindex="-1" aria-labelledby="modalQrCodeTitulo" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 class="modal-title fs-5" id="modalQrCodeTitulo">QR Code</h2>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+            </div>
+            <div class="modal-body text-center">
+                <img src="" alt="QR Code" class="qrcode-imagem img-fluid" width="280" height="280" data-qrcode-alvo="imagem">
+                <p class="small text-break mt-3 mb-0">
+                    <a href="#" target="_blank" rel="noopener" data-qrcode-alvo="link"></a>
+                </p>
+            </div>
+            <div class="modal-footer">
+                <a href="#" class="btn btn-outline-secondary" data-qrcode-alvo="download">Baixar SVG</a>
+                <button type="button" class="btn btn-primary" data-bs-dismiss="modal">Fechar</button>
+            </div>
+        </div>
+    </div>
+</div>
