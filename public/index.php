@@ -24,9 +24,7 @@ include __DIR__ . '/../vendor/autoload.php';
 
 if (! class_exists(Application::class)) {
     throw new RuntimeException(
-        "Unable to load application.\n"
-        . "- Type `composer install` if you are developing locally.\n"
-        . "- Type `docker-compose run laminas composer install` if you are using Docker.\n"
+        "Não foi possível carregar a aplicação. Rode `composer install` na pasta do projeto.\n"
     );
 }
 

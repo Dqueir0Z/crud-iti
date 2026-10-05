@@ -10,7 +10,10 @@ use Laminas\Form\Element\Email;
 use Laminas\Form\Element\Password;
 use Laminas\Form\Form;
 use Laminas\InputFilter\InputFilterProviderInterface;
+use Laminas\Validator\Callback;
 use Laminas\Validator\NotEmpty;
+
+use function is_string;
 
 final class LoginForm extends Form implements InputFilterProviderInterface
 {
@@ -58,19 +61,40 @@ final class LoginForm extends Form implements InputFilterProviderInterface
                 'filters'    => [['name' => StringTrim::class]],
                 'validators' => [
                     [
-                        'name'    => NotEmpty::class,
-                        'options' => ['messages' => [NotEmpty::IS_EMPTY => 'Informe o e-mail.']],
+                        'name'                   => NotEmpty::class,
+                        'break_chain_on_failure' => true,
+                        'options'                => ['messages' => [NotEmpty::IS_EMPTY => 'Informe o e-mail.']],
                     ],
+                    self::exigirTexto(),
                 ],
             ],
             'senha' => [
                 'required'   => true,
                 'validators' => [
                     [
-                        'name'    => NotEmpty::class,
-                        'options' => ['messages' => [NotEmpty::IS_EMPTY => 'Informe a senha.']],
+                        'name'                   => NotEmpty::class,
+                        'break_chain_on_failure' => true,
+                        'options'                => ['messages' => [NotEmpty::IS_EMPTY => 'Informe a senha.']],
                     ],
+                    self::exigirTexto(),
                 ],
+            ],
+        ];
+    }
+
+    /**
+     * Um POST forjado pode enviar o campo como lista (senha[]=x). NotEmpty aceita
+     * arrays, e o valor chegaria ao CredenciaisAdapter, que exige string.
+     *
+     * @return array<string, mixed>
+     */
+    private static function exigirTexto(): array
+    {
+        return [
+            'name'    => Callback::class,
+            'options' => [
+                'callback' => static fn (mixed $valor): bool => is_string($valor),
+                'messages' => [Callback::INVALID_VALUE => 'Valor inválido.'],
             ],
         ];
     }

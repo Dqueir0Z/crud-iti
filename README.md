@@ -47,6 +47,8 @@ não cobre. Ver também os avisos exibidos ao final de cada importação.
 - **`situacao`:** 4002 = Credenciado, 4001 = Em credenciamento (códigos do próprio ITI).
 - **`iti_id`:** guarda o `id` do ITI, com índice único. A importação casa os registros por ele,
   então reenviar o arquivo **atualiza sem duplicar**. Registros cadastrados à mão ficam com `iti_id` nulo.
+  A reimportação cria e atualiza registros e vínculos, mas **não remove** o que deixou de constar
+  no arquivo (nem vínculos feitos à mão); ela não é uma sincronização completa.
 - **Exclusão:** bloqueada com mensagem quando há dependentes (AC com AC N2, AC N2 com AR).
   As FKs `ON DELETE RESTRICT` garantem a regra também no banco.
 - **QR Code:** codifica a URL absoluta da página daquele item dentro do próprio sistema
@@ -61,7 +63,13 @@ não cobre. Ver também os avisos exibidos ao final de cada importação.
 
 ## Como executar (Ubuntu / WSL)
 
-Pré-requisitos: PHP 8.3 com `pdo_mysql`, `mbstring`, `intl`, `fileinfo`; Composer; MySQL 8.
+Pré-requisitos: PHP 8.3 com `pdo_mysql`, `mbstring`, `intl`, `fileinfo` e as extensões XML
+(`dom`, `simplexml`, `xmlwriter`, exigidas pelas dependências de desenvolvimento); Composer; MySQL 8.
+No Ubuntu 24.04:
+
+```bash
+sudo apt install php8.3-cli php8.3-mysql php8.3-mbstring php8.3-intl php8.3-xml composer mysql-server
+```
 
 ```bash
 composer install
