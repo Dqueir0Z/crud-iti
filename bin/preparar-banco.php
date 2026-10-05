@@ -9,8 +9,9 @@
  * 2. Banco anterior à situação por vínculo (ar_ac_n2 sem a coluna situacao):
  *    cria a coluna e copia a situação da AR para os vínculos; a cópia e a
  *    pendência de reimportação são gravadas na mesma transação.
- * 3. Dados do ITI: importados se nunca foram ("dados-iti") ou se há reimportação
- *    pendente; a pendência só sai depois da importação concluída.
+ * 3. Dados do ITI: importados se o banco não tem AR nem o marcador "dados-iti",
+ *    ou se há reimportação pendente (só sai depois da importação concluída).
+ *    Banco que já tem AR e não tem o marcador é adotado sem reimportar.
  * 4. RESTAURAR_DADOS=<valor>: apaga AC/AC N2/AR, reimporta e registra
  *    "restauracao:<valor>" numa única transação: ou tudo, ou nada. Troque o
  *    valor para restaurar de novo.
@@ -34,6 +35,8 @@ require 'vendor/autoload.php';
 const TENTATIVAS      = 10;
 const ESPERA_SEGUNDOS = 3;
 const ESPERA_TRAVA    = 120;
+/** A coluna etapa tem 100 caracteres, incluindo o prefixo "restauracao:". */
+const TAMANHO_MAXIMO_RESTAURACAO = 80;
 
 /** @var Psr\Container\ContainerInterface $container */
 $container = require 'config/container.php';
@@ -77,7 +80,20 @@ try {
         informar('Banco atualizado para a situação por vínculo; reimportação agendada.');
     }
 
+    // Banco existente sem o marcador (ex.: instalado pelo README) é adotado como
+    // está: os dados não são sobrescritos. Como a importação grava tudo numa
+    // transação, ter AR sem o marcador nunca é uma importação pela metade.
+    if (! marcado($conexao, 'dados-iti') && (int) $conexao->fetchOne('SELECT COUNT(*) FROM ar') > 0) {
+        marcar($conexao, 'dados-iti');
+        informar('Banco existente adotado sem reimportar os dados.');
+    }
+
     $restauracao = getenv('RESTAURAR_DADOS');
+    if (is_string($restauracao) && $restauracao !== '') {
+        if (strlen($restauracao) > TAMANHO_MAXIMO_RESTAURACAO) {
+            falhar(sprintf('RESTAURAR_DADOS deve ter até %d caracteres (ex.: a data).', TAMANHO_MAXIMO_RESTAURACAO));
+        }
+    }
     if (is_string($restauracao) && $restauracao !== '' && ! marcado($conexao, 'restauracao:' . $restauracao)) {
         $json = lerArquivo($arquivoIti);
         $conexao->transactional(static function (Connection $c) use ($importador, $json, $restauracao): void {
