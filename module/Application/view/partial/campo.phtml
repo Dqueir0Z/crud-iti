@@ -1,0 +1,33 @@
+<?php
+/**
+ * Renderiza label + elemento + mensagens de erro no padrão Bootstrap.
+ *
+ * @var Laminas\View\Renderer\PhpRenderer $this
+ * @var Laminas\Form\ElementInterface $elemento
+ * @var string|null $ajuda
+ */
+
+$mensagens = $elemento->getMessages();
+$classe    = (string) $elemento->getAttribute('class');
+if ($mensagens !== []) {
+    $elemento->setAttribute('class', trim($classe . ' is-invalid'));
+}
+$id = (string) ($elemento->getAttribute('id') ?: $elemento->getName());
+$elemento->setAttribute('id', $id);
+?>
+<div class="mb-3">
+    <label for="<?= $this->escapeHtmlAttr($id) ?>" class="form-label">
+        <?= $this->escapeHtml((string) $elemento->getLabel()) ?>
+    </label>
+    <?= $this->formElement($elemento) ?>
+    <?php if (! empty($ajuda)) : ?>
+        <div class="form-text"><?= $this->escapeHtml($ajuda) ?></div>
+    <?php endif; ?>
+    <?php if ($mensagens !== []) : ?>
+        <div class="invalid-feedback d-block">
+            <?php foreach ($mensagens as $mensagem) : ?>
+                <div><?= $this->escapeHtml(is_array($mensagem) ? implode(' ', $mensagem) : (string) $mensagem) ?></div>
+            <?php endforeach; ?>
+        </div>
+    <?php endif; ?>
+</div>

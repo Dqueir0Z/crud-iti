@@ -4,47 +4,85 @@ declare(strict_types=1);
 
 namespace ApplicationTest\Controller;
 
-use Application\Controller\IndexController;
+use Doctrine\ORM\EntityManagerInterface;
+use Laminas\Authentication\AuthenticationService;
+use Laminas\Authentication\Storage\NonPersistent;
 use Laminas\Stdlib\ArrayUtils;
 use Laminas\Test\PHPUnit\Controller\AbstractHttpControllerTestCase;
+use PHPUnit\Framework\Attributes\DataProvider;
 
-class IndexControllerTest extends AbstractHttpControllerTestCase
+/**
+ * Garante que nenhuma rota de CRUD é acessível sem login.
+ * A autenticação usa armazenamento em memória para não depender de sessão nem de banco.
+ */
+class ProtecaoDeRotasTest extends AbstractHttpControllerTestCase
 {
     public function setUp(): void
     {
-        // The module configuration should still be applicable for tests.
-        // You can override configuration here with test case specific values,
-        // such as sample view templates, path stacks, module_listener_options,
-        // etc.
-        $configOverrides = [];
-
         $this->setApplicationConfig(ArrayUtils::merge(
             include __DIR__ . '/../../../../config/application.config.php',
-            $configOverrides
+            ['module_listener_options' => ['config_cache_enabled' => false, 'module_map_cache_enabled' => false]]
         ));
 
         parent::setUp();
+
+        $servicos = $this->getApplicationServiceLocator();
+        $servicos->setAllowOverride(true);
+        $servicos->setService(AuthenticationService::class, new AuthenticationService(new NonPersistent()));
     }
 
-    public function testIndexActionCanBeAccessed(): void
+    /** @return iterable<string, array{string, string}> */
+    public static function rotasProtegidas(): iterable
     {
-        $this->dispatch('/', 'GET');
-        $this->assertResponseStatusCode(200);
-        $this->assertModuleName('application');
-        $this->assertControllerName(IndexController::class); // as specified in router's controller name alias
-        $this->assertControllerClass('IndexController');
-        $this->assertMatchedRouteName('home');
+        yield 'início' => ['/', '/login?redirect=/'];
+        yield 'lista de AC' => ['/ac', '/login?redirect=/ac'];
+        yield 'lista de AR com filtro' => ['/ar?busca=x', '/login?redirect=/ar?busca%3Dx'];
+        yield 'edição de AC N2' => ['/ac-n2/edit/1', '/login?redirect=/ac-n2/edit/1'];
+        yield 'estrutura' => ['/estrutura', '/login?redirect=/estrutura'];
+        yield 'importação' => ['/importar', '/login?redirect=/importar'];
+        yield 'QR Code' => ['/qrcode/ac/1', '/login?redirect=/qrcode/ac/1'];
     }
 
-    public function testIndexActionViewModelTemplateRenderedWithinLayout(): void
+    #[DataProvider('rotasProtegidas')]
+    public function testRotaProtegidaRedirecionaParaLogin(string $url, string $destino): void
     {
-        $this->dispatch('/', 'GET');
-        $this->assertQuery('body h1');
+        $this->dispatch($url, 'GET');
+
+        $this->assertResponseStatusCode(302);
+        $this->assertRedirectTo($destino);
     }
 
-    public function testInvalidRouteDoesNotCrash(): void
+    public function testPostSemLoginNaoExecutaAAcao(): void
     {
-        $this->dispatch('/invalid/route', 'GET');
+        $this->dispatch('/ac/delete/1', 'POST', ['csrf' => 'qualquer']);
+
+        $this->assertResponseStatusCode(302);
+        $this->assertRedirectTo('/login');
+    }
+
+    public function testRotaInexistenteRetorna404(): void
+    {
+        $this->dispatch('/rota/inexistente', 'GET');
+
+        $this->assertResponseStatusCode(404);
+    }
+
+    public function testUsuarioAutenticadoPassaPeloGuard(): void
+    {
+        $servicos = $this->getApplicationServiceLocator();
+        $servicos->get(AuthenticationService::class)
+            ->getStorage()
+            ->write(['id' => 1, 'email' => 'pessoa@exemplo.test', 'nome' => 'Pessoa']);
+
+        // EntityManager falso: o registro não existe, então o controller responde 404.
+        $entityManager = $this->createMock(EntityManagerInterface::class);
+        $entityManager->method('find')->willReturn(null);
+        $servicos->setService('doctrine.entitymanager.orm_default', $entityManager);
+
+        $this->dispatch('/qrcode/ac/42', 'GET');
+
+        $this->assertNotRedirect();
+        $this->assertMatchedRouteName('qrcode');
         $this->assertResponseStatusCode(404);
     }
 }
