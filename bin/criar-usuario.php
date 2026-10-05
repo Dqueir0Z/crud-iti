@@ -43,6 +43,12 @@ if (mb_strlen($senha) < TAMANHO_MINIMO_SENHA) {
     exit(1);
 }
 
+// O bcrypt ignora o que passa de 72 bytes; senhas maiores seriam truncadas sem aviso.
+if (strlen($senha) > Usuario::TAMANHO_MAXIMO_SENHA_BYTES) {
+    fwrite(STDERR, sprintf("A senha deve ter no máximo %d bytes.\n", Usuario::TAMANHO_MAXIMO_SENHA_BYTES));
+    exit(1);
+}
+
 /** @var Psr\Container\ContainerInterface $container */
 $container = require 'config/container.php';
 /** @var EntityManagerInterface $entityManager */

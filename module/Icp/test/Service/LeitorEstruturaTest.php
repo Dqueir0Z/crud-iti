@@ -94,6 +94,27 @@ final class LeitorEstruturaTest extends TestCase
         self::assertSame(150, mb_strlen($estrutura->acs[1]['nome']));
     }
 
+    /**
+     * Regressão (revisão do Codex): ids fora da faixa do INT do MySQL passavam
+     * pela leitura e derrubavam a importação com erro 500 na gravação.
+     */
+    public function testIdForaDaFaixaDoBancoEhIgnoradoComAviso(): void
+    {
+        $json = json_encode([
+            'tipo'                 => 'ac-root',
+            'entidades_vinculadas' => [
+                ['tipo' => 'ac-1', 'id' => 1, 'situacao' => 4002, 'nome' => 'AC VALIDA'],
+                ['tipo' => 'ac-1', 'id' => 2147483648, 'situacao' => 4002, 'nome' => 'AC ID GRANDE'],
+                ['tipo' => 'ac-1', 'id' => 0, 'situacao' => 4002, 'nome' => 'AC ID ZERO'],
+            ],
+        ]);
+
+        $estrutura = (new LeitorEstrutura())->ler((string) $json);
+
+        self::assertSame([1], array_keys($estrutura->acs));
+        self::assertContains('Registro sem id, nome ou tipo válido sob "AC RAIZ" foi ignorado.', $estrutura->avisos);
+    }
+
     public function testHtmlNoLugarDoJsonGeraMensagemExplicativa(): void
     {
         $this->expectException(EstruturaInvalidaException::class);

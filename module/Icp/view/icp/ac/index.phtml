@@ -10,7 +10,7 @@
 use Icp\Enum\Situacao;
 
 $this->headTitle('Autoridades Certificadoras');
-$query = array_filter(['busca' => $busca, 'situacao' => $situacao?->value]);
+$query = array_filter(['busca' => $busca, 'situacao' => $situacao?->value], static fn ($v): bool => $v !== null && $v !== '');
 ?>
 <div class="page-header">
     <div>

@@ -12,7 +12,7 @@
 use Icp\Enum\Situacao;
 
 $this->headTitle('Autoridades de Registro');
-$query = array_filter(['busca' => $busca, 'acN2' => $acN2Id, 'situacao' => $situacao?->value]);
+$query = array_filter(['busca' => $busca, 'acN2' => $acN2Id, 'situacao' => $situacao?->value], static fn ($v): bool => $v !== null && $v !== '');
 
 $grupos = [];
 foreach ($acN2s as $acN2) {

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Icp\Controller;
 
+use Doctrine\DBAL\Exception as DbalException;
 use Icp\Exception\EstruturaInvalidaException;
 use Icp\Form\ImportacaoForm;
 use Icp\Service\ImportadorEstrutura;
@@ -47,6 +48,9 @@ final class ImportacaoController extends AbstractActionController
                     $resultado = $this->importador->importarJson($conteudo === false ? '' : $conteudo);
                 } catch (EstruturaInvalidaException $e) {
                     $erro = $e->getMessage();
+                } catch (DbalException) {
+                    // Rede de segurança: a transação já foi desfeita e nada do arquivo foi gravado.
+                    $erro = 'O banco de dados recusou os dados do arquivo. Nada foi gravado.';
                 }
             }
         }

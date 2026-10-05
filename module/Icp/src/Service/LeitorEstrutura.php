@@ -45,6 +45,8 @@ use const JSON_THROW_ON_ERROR;
 final class LeitorEstrutura
 {
     private const PROFUNDIDADE_MAXIMA = 32;
+    /** Maior valor da coluna iti_id (INT com sinal no MySQL). */
+    private const ID_MAXIMO = 2147483647;
     private const MAXIMO_AVISOS_DETALHADOS = 20;
 
     /** @var array<int, array{nome: string, situacao: Situacao}> */
@@ -216,7 +218,8 @@ final class LeitorEstrutura
     private function validarNo(mixed $no, string $pai): ?array
     {
         if (
-            ! is_array($no) || ! is_int($no['id'] ?? null) || ! is_string($no['nome'] ?? null)
+            ! is_array($no) || ! is_int($no['id'] ?? null) || $no['id'] < 1 || $no['id'] > self::ID_MAXIMO
+            || ! is_string($no['nome'] ?? null)
             || ! is_string($no['tipo'] ?? null) || trim($no['nome']) === ''
         ) {
             $this->avisar('invalido', sprintf('Registro sem id, nome ou tipo válido sob "%s" foi ignorado.', $pai));

@@ -6,11 +6,14 @@ namespace Auth\Entity;
 
 use DateTimeImmutable;
 use Doctrine\ORM\Mapping as ORM;
+use InvalidArgumentException;
 
 use function mb_strtolower;
 use function password_hash;
 use function password_needs_rehash;
 use function password_verify;
+use function sprintf;
+use function strlen;
 use function trim;
 
 use const PASSWORD_DEFAULT;
@@ -22,6 +25,9 @@ use const PASSWORD_DEFAULT;
 #[ORM\Table(name: 'usuario')]
 class Usuario
 {
+    /** O bcrypt (PASSWORD_DEFAULT no PHP 8.3) ignora o que passa de 72 bytes. */
+    public const TAMANHO_MAXIMO_SENHA_BYTES = 72;
+
     #[ORM\Id]
     #[ORM\GeneratedValue]
     #[ORM\Column(type: 'integer')]
@@ -43,7 +49,7 @@ class Usuario
     {
         $this->email     = self::normalizarEmail($email);
         $this->nome      = $nome;
-        $this->senhaHash = password_hash($senha, PASSWORD_DEFAULT);
+        $this->senhaHash = self::gerarHash($senha);
         $this->createdAt = new DateTimeImmutable();
     }
 
@@ -74,7 +80,23 @@ class Usuario
 
     public function definirSenha(string $senha): void
     {
-        $this->senhaHash = password_hash($senha, PASSWORD_DEFAULT);
+        $this->senhaHash = self::gerarHash($senha);
+    }
+
+    /**
+     * Recusa senhas que o bcrypt truncaria: sem isso, só os primeiros 72 bytes
+     * contariam e qualquer sufixo diferente também seria aceito no login.
+     */
+    private static function gerarHash(string $senha): string
+    {
+        if (strlen($senha) > self::TAMANHO_MAXIMO_SENHA_BYTES) {
+            throw new InvalidArgumentException(sprintf(
+                'A senha deve ter no máximo %d bytes (letras acentuadas ocupam 2).',
+                self::TAMANHO_MAXIMO_SENHA_BYTES
+            ));
+        }
+
+        return password_hash($senha, PASSWORD_DEFAULT);
     }
 
     /** Indica se o hash foi gerado com um algoritmo/custo desatualizado. */
