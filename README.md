@@ -7,9 +7,10 @@ Sistema web para gerenciar a estrutura de Autoridades Certificadoras da ICP-Bras
 
 Desafio técnico — Desenvolvedor PHP.
 
-> **Demonstração online:** _endereço será publicado aqui após o deploy_ — usuário
-> `demo@crud-iti.test`, senha `Demo@ITI2026`. Hospedagem gratuita: o primeiro acesso depois de
-> um tempo parado costuma levar de 30 s a 1 min (o serviço "acorda"). Veja
+> **Demonstração online: <https://crud-iti.onrender.com>** — usuário `demo@crud-iti.test`,
+> senha `Demo@ITI2026`. O QR Code de cada registro pode ser lido pelo celular e abre a página
+> daquela entidade (após o login). Hospedagem gratuita: o primeiro acesso depois de um tempo
+> parado costuma levar de 30 s a 1 min (o serviço "acorda"). Veja
 > [Publicação gratuita](#publicação-gratuita-render--aiven).
 
 ## Stack
